@@ -1,10 +1,9 @@
 
+
 import { Resend } from 'resend';
 import { NextRequest, NextResponse } from 'next/server';
 import { createExcelFile } from '@/lib/excel-generator';
 import { FinancialInput } from '@/lib/engine/types';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {
     try {
@@ -13,6 +12,14 @@ export async function POST(req: NextRequest) {
         if (!email || !data) {
             return NextResponse.json({ error: 'Email and data required' }, { status: 400 });
         }
+
+        // Create Resend client at runtime
+        const apiKey = process.env.RESEND_API_KEY;
+        if (!apiKey) {
+            return NextResponse.json({ error: 'RESEND_API_KEY not configured' }, { status: 500 });
+        }
+
+        const resend = new Resend(apiKey);
 
         // Generate the Excel file buffer
         const buffer = await createExcelFile(data as FinancialInput);

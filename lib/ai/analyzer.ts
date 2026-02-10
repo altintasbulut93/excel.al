@@ -3,10 +3,6 @@ import { FinancialInput } from '../engine/types';
 import OpenAI from 'openai';
 import { v4 as uuidv4 } from 'uuid';
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
-
 const SYSTEM_PROMPT = `
 You are an expert financial consultant for startups. 
 Your goal is to analyze a business idea and generate realistic financial assumptions for a 1-year projection.
@@ -47,33 +43,43 @@ Rules:
 `;
 
 export async function analyzeBusinessIdea(idea: string): Promise<Partial<FinancialInput>> {
-    try {
-        const completion = await openai.chat.completions.create({
-            model: "gpt-4o",
-            messages: [
-                { role: "system", content: SYSTEM_PROMPT },
-                { role: "user", content: `Business Idea: ${idea}` },
-            ],
-            response_format: { type: "json_object" },
-            temperature: 0.7,
-        });
-
-        const content = completion.choices[0].message.content;
-        if (!content) throw new Error("No content from OpenAI");
-
-        const result = JSON.parse(content);
-
-        // Add UUIDs
-        if (result.team) {
-            result.team = result.team.map((t: any) => ({ ...t, id: uuidv4() }));
-        }
-        if (result.fixedExpenses) {
-            result.fixedExpenses = result.fixedExpenses.map((e: any) => ({ ...e, id: uuidv4() }));
-        }
-
-        return result;
-    } catch (error) {
-        console.error("AI Analysis Failed:", error);
-        throw new Error("AI analizi başarısız oldu.");
+  try {
+    // Create OpenAI client at runtime, not at module load
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY environment variable is not set');
     }
+
+    const openai = new OpenAI({
+      apiKey: apiKey,
+    });
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: `Business Idea: ${idea}` },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.7,
+    });
+
+    const content = completion.choices[0].message.content;
+    if (!content) throw new Error("No content from OpenAI");
+
+    const result = JSON.parse(content);
+
+    // Add UUIDs
+    if (result.team) {
+      result.team = result.team.map((t: any) => ({ ...t, id: uuidv4() }));
+    }
+    if (result.fixedExpenses) {
+      result.fixedExpenses = result.fixedExpenses.map((e: any) => ({ ...e, id: uuidv4() }));
+    }
+
+    return result;
+  } catch (error) {
+    console.error("AI Analysis Failed:", error);
+    throw new Error("AI analizi başarısız oldu.");
+  }
 }
