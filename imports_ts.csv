@@ -1,0 +1,6 @@
+"Line","Filename"
+"import { analyzeBusinessIdea } from '@/lib/ai/analyzer';","InputStream"
+"import { createExcelFile } from '@/lib/excel-generator';","InputStream"
+"import { FinancialInput } from '@/lib/engine/types';","InputStream"
+"import { createExcelFile } from '@/lib/excel-generator';","InputStream"
+"import { FinancialInput } from '@/lib/engine/types';","InputStream"

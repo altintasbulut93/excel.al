@@ -19,7 +19,7 @@ export interface TeamMember {
 }
 
 export interface FixedExpense {
-    id: string; // Add ID property
+    id: string;
     name: string;
     amount: number;
     currency: 'TRY' | 'USD' | 'EUR';
@@ -39,10 +39,11 @@ export interface FinancialInput {
     team: TeamMember[];
     fixedExpenses: FixedExpense[];
     marketing: Marketing;
-    startingCapital: number; // Added this field
+    startingCapital: number;
+    cogsRate?: number;
 }
 
-export interface MonthlyFinancials {
+export interface MonthlyFinancialResult {
     month: number;
     revenue: number;
     cogs: number;
@@ -51,29 +52,32 @@ export interface MonthlyFinancials {
         personnel: number;
         marketing: number;
         fixed: number;
-        total: number;
+        other: number;
     };
+    totalExpenses: number;
     ebitda: number;
-    tax: number;
     netIncome: number;
     cashFlow: {
         inflow: number;
         outflow: number;
         net: number;
-        openingBalance: number;
+        beginningBalance: number;
         endingBalance: number;
+    };
+    metrics: {
+        burnRate: number;
+        runway: number;
+        grossMargin: number;
     };
 }
 
 export interface FinancialModelResult {
-    monthly: MonthlyFinancials[];
+    monthly: MonthlyFinancialResult[];
     summary: {
         totalRevenue: number;
         totalProfit: number;
-        totalExpenses: number;
         breakevenMonth: number | null;
         neededCapital: number;
-        runwayMonths: number;
     };
     redFlags: string[];
 }
