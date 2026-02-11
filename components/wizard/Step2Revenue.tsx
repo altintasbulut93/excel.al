@@ -63,9 +63,12 @@ export function Step2Revenue() {
                             value={price}
                             onChange={(e) => setPrice(Number(e.target.value))}
                             placeholder="0.00"
+                            min="0"
+                            max="1000000"
+                            required
                         />
                         <p className="text-xs text-muted-foreground">
-                            {data.sector === 'SaaS' ? "Ortalama SaaS: 200-1000 TL" : "Sektör ortalaması değişebilir"}
+                            {data.sector === 'SaaS' ? "💡 Ortalama SaaS: 200-1000 TL" : "Sektör ortalaması değişebilir"}
                         </p>
                     </div>
                 </div>

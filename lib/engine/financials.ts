@@ -27,8 +27,11 @@ export function generateFinancialModel(input: FinancialInput): FinancialModelRes
         }
     }
 
-    // 12 Aylık Döngü
-    for (let month = 1; month <= 12; month++) {
+    // Configurable projection period (12 or 36 months)
+    const projectionMonths = input.projectionMonths || 12;
+
+    // Monthly Loop
+    for (let month = 1; month <= projectionMonths; month++) {
         // 1. Müşteri Büyümesi (Basit bileşik büyüme)
         if (month > 1) {
             currentCustomers = currentCustomers * (1 + input.growth.monthlyGrowthRate);

@@ -41,6 +41,7 @@ export interface FinancialInput {
     marketing: Marketing;
     startingCapital: number;
     cogsRate?: number;
+    projectionMonths?: number; // 12 or 36
 }
 
 export interface MonthlyFinancialResult {
