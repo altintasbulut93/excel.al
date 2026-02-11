@@ -77,6 +77,31 @@ export function Step4Dashboard() {
         }
     };
 
+    const handleDownloadPDF = async () => {
+        try {
+            const response = await fetch('/api/generate-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+
+            if (!response.ok) throw new Error("PDF indirme başarısız");
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `finansal-model-${data.businessName.replace(/\s+/g, '_') || 'taslak'}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (e: any) {
+            console.error(e);
+            alert("PDF indirme hatası.");
+        }
+    };
+
     return (
         <div className="w-full max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
 
@@ -116,18 +141,26 @@ export function Step4Dashboard() {
                     )}
 
                     {isPro ? (
-                        <Button
-                            className="bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-900/20 active:scale-95 transition-transform"
-                            onClick={handleDownloadExcel}
-                        >
-                            <Download className="mr-2 h-4 w-4" /> Excel İndir
-                        </Button>
+                        <>
+                            <Button
+                                className="bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-900/20 active:scale-95 transition-transform"
+                                onClick={handleDownloadExcel}
+                            >
+                                <Download className="mr-2 h-4 w-4" /> Excel İndir
+                            </Button>
+                            <Button
+                                className="bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-900/20 active:scale-95 transition-transform"
+                                onClick={handleDownloadPDF}
+                            >
+                                <Download className="mr-2 h-4 w-4" /> PDF İndir
+                            </Button>
+                        </>
                     ) : (
                         <div title="Pro özellik">
                             <UpgradeModal
                                 trigger={
                                     <Button variant="secondary" className="opacity-80">
-                                        <Lock className="mr-2 h-4 w-4" /> Excel (Pro)
+                                        <Lock className="mr-2 h-4 w-4" /> Excel + PDF (Pro)
                                     </Button>
                                 }
                             />
