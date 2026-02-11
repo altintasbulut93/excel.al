@@ -1,30 +1,32 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Validate environment variables
-function getSupabaseConfig() {
+// Validate and create Supabase client
+function createSupabaseClient() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-    // During build time, these might not be available - that's OK
-    if (!supabaseUrl || !supabaseKey) {
-        console.warn(
-            '⚠️ Supabase credentials not found. This is expected during build time. ' +
-            'Make sure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in production.'
-        );
+    // Validate URL format
+    const isValidUrl = supabaseUrl && (supabaseUrl.startsWith('http://') || supabaseUrl.startsWith('https://'));
 
-        // Return dummy values for build time
-        return {
-            url: supabaseUrl || 'https://placeholder.supabase.co',
-            key: supabaseKey || 'placeholder-key'
-        };
+    // During build time or when env vars are missing, return null to prevent crashes
+    if (!supabaseUrl || !supabaseKey || !isValidUrl) {
+        if (typeof window === 'undefined') {
+            // Server-side (build time) - just warn
+            console.warn(
+                '⚠️ Supabase credentials not found or invalid. ' +
+                'Make sure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set correctly.'
+            );
+        }
+        return null;
     }
 
-    return {
-        url: supabaseUrl,
-        key: supabaseKey
-    };
+    try {
+        return createClient(supabaseUrl, supabaseKey);
+    } catch (error) {
+        console.error('Failed to create Supabase client:', error);
+        return null;
+    }
 }
 
-const config = getSupabaseConfig();
-export const supabase = createClient(config.url, config.key);
+export const supabase = createSupabaseClient();

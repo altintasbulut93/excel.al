@@ -109,7 +109,7 @@ export function Step4Dashboard() {
 
                     <Button variant="ghost" onClick={handleEdit}>Düzenle</Button>
 
-                    {user && (
+                    {user && supabase && (
                         <Button variant="ghost" size="icon" onClick={() => supabase.auth.signOut()} title="Çıkış Yap">
                             <LogOut className="w-4 h-4 text-red-500" />
                         </Button>

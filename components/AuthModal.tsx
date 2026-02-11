@@ -29,6 +29,12 @@ export function AuthModal({
         setLoading(true);
         setError("");
 
+        if (!supabase) {
+            setError("Supabase client not available");
+            setLoading(false);
+            return;
+        }
+
         const { data, error } = await supabase.auth.signInWithPassword({
             email,
             password,
@@ -47,6 +53,12 @@ export function AuthModal({
         e.preventDefault();
         setLoading(true);
         setError("");
+
+        if (!supabase) {
+            setError("Supabase client not available");
+            setLoading(false);
+            return;
+        }
 
         const { data, error } = await supabase.auth.signUp({
             email,

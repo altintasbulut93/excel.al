@@ -17,6 +17,12 @@ export default function RootLayout({
   const { setUser } = useFinancialStore();
 
   useEffect(() => {
+    // Skip if Supabase client is not available (e.g., during build)
+    if (!supabase) {
+      console.warn('Supabase client not available');
+      return;
+    }
+
     // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
