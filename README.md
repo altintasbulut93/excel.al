@@ -7,10 +7,20 @@ This project is a Next.js-based web application that allows entrepreneurs to tra
 
 - **AI-Powered Analysis**: Describe your business idea, and OpenAI (GPT-4o) will estimate your sector, revenue model, and expenses for you.
 - **Detailed Financial Engine**: Social Security (SGK), Tax, and VAT calculations in compliance with Turkish regulations (2025).
-- **Dynamic Dashboard**: 12-month P&L (Profit & Loss), Cash Flow, and Red Flag (Risk) analyses.
+- **Dynamic Dashboard**: 12-month (or 36-month) P&L (Profit & Loss), Cash Flow, and Red Flag (Risk) analyses.
 - **Excel & PDF Export**: Downloadable files ready for investor presentations.
 - **Cloud Storage (Supabase)**: Safely store and re-edit your models.
 - **Reverse Engineering**: Calculate required sales and marketing budget based on your target net profit.
+- **Input Validation**: Smart form validation with sector-specific benchmarks.
+- **Benchmark Hints**: Real-time suggestions based on industry standards.
+
+## 🌐 Live Demo
+
+**Netlify:** [https://excel-al.netlify.app](https://excel-al.netlify.app)
+
+## 📦 Deployment
+
+For Netlify deployment instructions, see [NETLIFY_DEPLOYMENT.md](./NETLIFY_DEPLOYMENT.md)
 
 ## 🛠️ Installation
 
