@@ -22,6 +22,7 @@ import { UnitEconomicsDashboard } from "@/components/UnitEconomicsDashboard";
 import { DeathValleyChart } from "@/components/DeathValleyChart";
 import { ScenarioManager } from "@/components/ScenarioManager";
 import { CostStructureChart } from "@/components/CostStructureChart";
+import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
 import { FinancialParameters } from "@/lib/engine/types";
 
 export function Step4Dashboard() {
@@ -363,6 +364,9 @@ export function Step4Dashboard() {
                     scenarioAnalysis={results.scenarioAnalysis}
                 />
             )}
+
+            {/* NEW: Analytics Intelligence Dashboard */}
+            <AnalyticsDashboard result={results} />
 
             {/* Modals */}
             <AuthModal
