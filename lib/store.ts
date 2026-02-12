@@ -25,9 +25,13 @@ interface FinancialStore {
     data: FinancialInput;
     currentStep: number;
     user: User | null;
+    isAdmin: boolean;
+    subscriptionTier: 'free' | 'pro' | 'enterprise';
     setData: (data: Partial<FinancialInput>) => void;
     setStep: (step: number) => void;
     setUser: (user: User | null) => void;
+    setIsAdmin: (isAdmin: boolean) => void;
+    setSubscriptionTier: (tier: 'free' | 'pro' | 'enterprise') => void;
     reset: () => void;
 }
 
@@ -35,8 +39,12 @@ export const useFinancialStore = create<FinancialStore>((set) => ({
     data: defaultState,
     currentStep: 0,
     user: null,
+    isAdmin: false,
+    subscriptionTier: 'free',
     setData: (newData) => set((state) => ({ data: { ...state.data, ...newData } })),
     setStep: (step) => set({ currentStep: step }),
     setUser: (user) => set({ user }),
+    setIsAdmin: (isAdmin) => set({ isAdmin }),
+    setSubscriptionTier: (tier) => set({ subscriptionTier: tier }),
     reset: () => set({ data: defaultState, currentStep: 0 }),
 }));

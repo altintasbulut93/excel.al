@@ -14,7 +14,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { setUser } = useFinancialStore();
+  const { setUser, setIsAdmin, setSubscriptionTier } = useFinancialStore();
 
   useEffect(() => {
     // Skip if Supabase client is not available (e.g., during build)
@@ -23,9 +23,35 @@ export default function RootLayout({
       return;
     }
 
+    // Function to fetch user profile
+    const fetchProfile = async (userId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('is_admin, subscription_tier')
+          .eq('id', userId)
+          .single();
+
+        if (error) {
+          console.error('Error fetching profile:', error);
+          return;
+        }
+
+        if (data) {
+          setIsAdmin(data.is_admin || false);
+          setSubscriptionTier(data.subscription_tier || 'free');
+        }
+      } catch (err) {
+        console.error('Profile fetch error:', err);
+      }
+    };
+
     // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+      }
     });
 
     // Listen for changes
@@ -33,10 +59,16 @@ export default function RootLayout({
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+      } else {
+        setIsAdmin(false);
+        setSubscriptionTier('free');
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, [setUser]);
+  }, [setUser, setIsAdmin, setSubscriptionTier]);
 
   return (
     <html lang="tr">

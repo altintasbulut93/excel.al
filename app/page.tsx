@@ -9,7 +9,7 @@ import { Step4Dashboard } from "@/components/wizard/Step4Dashboard";
 import { cn } from "@/lib/utils";
 
 export default function Home() {
-  const { currentStep } = useFinancialStore();
+  const { currentStep, isAdmin, user } = useFinancialStore();
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex flex-col items-center py-10 px-4">
@@ -28,6 +28,15 @@ export default function Home() {
           <p className="text-muted-foreground">
             5 dakika içinde gelir modelinizi, giderlerinizi ve nakit akışınızı hesaplayın.
           </p>
+
+          {/* Admin Badge */}
+          {isAdmin && user && (
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full text-sm font-semibold shadow-lg">
+              <span>👑</span>
+              <span>Admin Mode</span>
+              <span className="text-xs opacity-80">({user.email})</span>
+            </div>
+          )}
 
           {/* PROGRESS STEPS */}
           <div className="flex justify-center items-center mt-8 gap-2">

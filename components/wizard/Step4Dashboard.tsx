@@ -19,10 +19,12 @@ import { ReverseEngineeringTool } from "@/components/ReverseEngineering";
 import { BenchmarkCard } from "@/components/BenchmarkCard";
 
 export function Step4Dashboard() {
-    const { data, setStep, user } = useFinancialStore();
+    const { data, setStep, user, isAdmin, subscriptionTier } = useFinancialStore();
     const [isSaving, setIsSaving] = useState(false);
-    const [isPro, setIsPro] = useState(false);
     const [authOpen, setAuthOpen] = useState(false);
+
+    // Pro features: Admin OR enterprise/pro tier
+    const isPro = isAdmin || subscriptionTier === 'pro' || subscriptionTier === 'enterprise';
 
     // Hesaplamayı çalıştır
     const results = generateFinancialModel(data);
