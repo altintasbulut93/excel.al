@@ -1,11 +1,13 @@
 
 "use client";
 
+import { useState } from "react";
 import { useFinancialStore } from "@/lib/store";
 import { Step1Business } from "@/components/wizard/Step1Business";
 import { Step2Revenue } from "@/components/wizard/Step2Revenue";
 import { Step3Expenses } from "@/components/wizard/Step3Expenses";
 import { Step4Dashboard } from "@/components/wizard/Step4Dashboard";
+import { CountrySelector } from "@/components/CountrySelector";
 import { cn } from "@/lib/utils";
 
 export default function Home() {
@@ -69,6 +71,15 @@ export default function Home() {
         {currentStep === 2 && <Step3Expenses />}
         {currentStep === 3 && <Step4Dashboard />}
       </div>
+
+      {/* Country Selector Modal */}
+      <CountrySelector
+        open={false}
+        onClose={() => { }}
+        onSelect={(country) => {
+          console.log('Country selected:', country);
+        }}
+      />
 
     </main>
   );
