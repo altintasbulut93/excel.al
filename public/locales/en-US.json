@@ -1,0 +1,149 @@
+{
+    "common": {
+        "app_name": "excel.al",
+        "welcome": "Welcome",
+        "loading": "Loading...",
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "edit": "Edit",
+        "add": "Add",
+        "search": "Search",
+        "filter": "Filter",
+        "export": "Export",
+        "import": "Import",
+        "download": "Download",
+        "upload": "Upload",
+        "confirm": "Confirm",
+        "back": "Back",
+        "next": "Next",
+        "finish": "Finish",
+        "close": "Close"
+    },
+    "auth": {
+        "login": "Login",
+        "logout": "Logout",
+        "signup": "Sign Up",
+        "email": "Email",
+        "password": "Password",
+        "forgot_password": "Forgot Password",
+        "reset_password": "Reset Password"
+    },
+    "dashboard": {
+        "title": "Financial Dashboard",
+        "overview": "Overview",
+        "revenue": "Revenue",
+        "expenses": "Expenses",
+        "profit": "Profit",
+        "loss": "Loss",
+        "cash_flow": "Cash Flow",
+        "breakeven": "Breakeven",
+        "runway": "Runway"
+    },
+    "wizard": {
+        "step1_title": "Business Information",
+        "step2_title": "Revenue Model",
+        "step3_title": "Expenses",
+        "step4_title": "Dashboard",
+        "business_name": "Business Name",
+        "sector": "Sector",
+        "start_date": "Start Date",
+        "initial_capital": "Initial Capital"
+    },
+    "revenue": {
+        "title": "Revenue Items",
+        "add_item": "Add Revenue Item",
+        "item_name": "Item Name",
+        "unit_price": "Unit Price",
+        "quantity": "Quantity",
+        "growth_rate": "Growth Rate",
+        "monthly": "Monthly",
+        "annual": "Annual"
+    },
+    "expenses": {
+        "title": "Expense Items",
+        "add_item": "Add Expense Item",
+        "fixed": "Fixed Cost",
+        "variable": "Variable Cost",
+        "personnel": "Personnel",
+        "marketing": "Marketing",
+        "infrastructure": "Infrastructure",
+        "other": "Other"
+    },
+    "country": {
+        "select_country": "Select Country",
+        "search_countries": "Search countries...",
+        "vat_rate": "VAT Rate",
+        "social_contrib": "Social Security",
+        "tax_brackets": "Tax Brackets",
+        "currency": "Currency",
+        "locale": "Language"
+    },
+    "templates": {
+        "title": "Industry Templates",
+        "select_template": "Select Template",
+        "load_template": "Load Template",
+        "saas": "SaaS",
+        "ecommerce": "E-commerce",
+        "consulting": "Consulting",
+        "marketplace": "Marketplace",
+        "mobile_app": "Mobile App"
+    },
+    "timeline": {
+        "title": "Timeline",
+        "add_event": "Add Event",
+        "event_type": "Event Type",
+        "effective_date": "Effective Date",
+        "hire": "Hire",
+        "salary_change": "Salary Change",
+        "price_change": "Price Change",
+        "one_time_cost": "One-time Cost",
+        "product_launch": "Product Launch"
+    },
+    "reports": {
+        "title": "Reports",
+        "generate": "Generate Report",
+        "monthly": "Monthly Report",
+        "share": "Share",
+        "download_pdf": "Download PDF",
+        "download_excel": "Download Excel",
+        "target_vs_actual": "Target vs Actual",
+        "visibility": "Visibility",
+        "public": "Public",
+        "private": "Private",
+        "unlisted": "Unlisted"
+    },
+    "analytics": {
+        "growth_efficiency": "Growth Efficiency",
+        "financial_stability": "Financial Stability",
+        "risk_index": "Risk Index",
+        "scenario_confidence": "Scenario Confidence",
+        "unit_economics": "Unit Economics",
+        "cac": "Customer Acquisition Cost",
+        "ltv": "Lifetime Value",
+        "arpu": "Average Revenue Per User"
+    },
+    "checklist": {
+        "title": "Monthly Checklist",
+        "update_revenue": "Update Revenue",
+        "update_expenses": "Update Expenses",
+        "add_customers": "Add New Customers",
+        "review_metrics": "Review Metrics",
+        "completed": "Completed",
+        "pending": "Pending"
+    },
+    "errors": {
+        "generic": "An error occurred",
+        "network": "Network error",
+        "auth": "Authentication error",
+        "validation": "Invalid data",
+        "not_found": "Not found",
+        "permission": "Permission denied"
+    },
+    "success": {
+        "saved": "Successfully saved",
+        "deleted": "Successfully deleted",
+        "updated": "Successfully updated",
+        "created": "Successfully created"
+    }
+}

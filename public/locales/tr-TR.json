@@ -1,0 +1,149 @@
+{
+    "common": {
+        "app_name": "excel.al",
+        "welcome": "Hoş Geldiniz",
+        "loading": "Yükleniyor...",
+        "save": "Kaydet",
+        "cancel": "İptal",
+        "delete": "Sil",
+        "edit": "Düzenle",
+        "add": "Ekle",
+        "search": "Ara",
+        "filter": "Filtrele",
+        "export": "Dışa Aktar",
+        "import": "İçe Aktar",
+        "download": "İndir",
+        "upload": "Yükle",
+        "confirm": "Onayla",
+        "back": "Geri",
+        "next": "İleri",
+        "finish": "Bitir",
+        "close": "Kapat"
+    },
+    "auth": {
+        "login": "Giriş Yap",
+        "logout": "Çıkış Yap",
+        "signup": "Kayıt Ol",
+        "email": "E-posta",
+        "password": "Şifre",
+        "forgot_password": "Şifremi Unuttum",
+        "reset_password": "Şifreyi Sıfırla"
+    },
+    "dashboard": {
+        "title": "Finansal Dashboard",
+        "overview": "Genel Bakış",
+        "revenue": "Gelir",
+        "expenses": "Gider",
+        "profit": "Kâr",
+        "loss": "Zarar",
+        "cash_flow": "Nakit Akışı",
+        "breakeven": "Başabaş",
+        "runway": "Runway"
+    },
+    "wizard": {
+        "step1_title": "İşletme Bilgileri",
+        "step2_title": "Gelir Modeli",
+        "step3_title": "Giderler",
+        "step4_title": "Dashboard",
+        "business_name": "İşletme Adı",
+        "sector": "Sektör",
+        "start_date": "Başlangıç Tarihi",
+        "initial_capital": "Başlangıç Sermayesi"
+    },
+    "revenue": {
+        "title": "Gelir Kalemleri",
+        "add_item": "Gelir Kalemi Ekle",
+        "item_name": "Kalem Adı",
+        "unit_price": "Birim Fiyat",
+        "quantity": "Adet",
+        "growth_rate": "Büyüme Oranı",
+        "monthly": "Aylık",
+        "annual": "Yıllık"
+    },
+    "expenses": {
+        "title": "Gider Kalemleri",
+        "add_item": "Gider Kalemi Ekle",
+        "fixed": "Sabit Gider",
+        "variable": "Değişken Gider",
+        "personnel": "Personel",
+        "marketing": "Pazarlama",
+        "infrastructure": "Altyapı",
+        "other": "Diğer"
+    },
+    "country": {
+        "select_country": "Ülke Seçin",
+        "search_countries": "Ülke Ara...",
+        "vat_rate": "KDV Oranı",
+        "social_contrib": "Sosyal Güvenlik",
+        "tax_brackets": "Vergi Dilimleri",
+        "currency": "Para Birimi",
+        "locale": "Dil"
+    },
+    "templates": {
+        "title": "Sektör Şablonları",
+        "select_template": "Şablon Seçin",
+        "load_template": "Şablonu Yükle",
+        "saas": "SaaS",
+        "ecommerce": "E-ticaret",
+        "consulting": "Danışmanlık",
+        "marketplace": "Marketplace",
+        "mobile_app": "Mobil Uygulama"
+    },
+    "timeline": {
+        "title": "Zaman Çizelgesi",
+        "add_event": "Olay Ekle",
+        "event_type": "Olay Tipi",
+        "effective_date": "Geçerlilik Tarihi",
+        "hire": "İşe Alım",
+        "salary_change": "Maaş Değişikliği",
+        "price_change": "Fiyat Değişikliği",
+        "one_time_cost": "Tek Seferlik Gider",
+        "product_launch": "Ürün Lansmanı"
+    },
+    "reports": {
+        "title": "Raporlar",
+        "generate": "Rapor Oluştur",
+        "monthly": "Aylık Rapor",
+        "share": "Paylaş",
+        "download_pdf": "PDF İndir",
+        "download_excel": "Excel İndir",
+        "target_vs_actual": "Hedef vs Gerçek",
+        "visibility": "Görünürlük",
+        "public": "Herkese Açık",
+        "private": "Özel",
+        "unlisted": "Bağlantısı Olanlar"
+    },
+    "analytics": {
+        "growth_efficiency": "Büyüme Verimliliği",
+        "financial_stability": "Finansal İstikrar",
+        "risk_index": "Risk Endeksi",
+        "scenario_confidence": "Senaryo Güveni",
+        "unit_economics": "Birim Ekonomisi",
+        "cac": "Müşteri Edinme Maliyeti",
+        "ltv": "Müşteri Yaşam Boyu Değeri",
+        "arpu": "Kullanıcı Başına Ortalama Gelir"
+    },
+    "checklist": {
+        "title": "Aylık Kontrol Listesi",
+        "update_revenue": "Gelirleri Güncelle",
+        "update_expenses": "Giderleri Güncelle",
+        "add_customers": "Yeni Müşteri Sayısı",
+        "review_metrics": "Metrikleri İncele",
+        "completed": "Tamamlandı",
+        "pending": "Beklemede"
+    },
+    "errors": {
+        "generic": "Bir hata oluştu",
+        "network": "Bağlantı hatası",
+        "auth": "Kimlik doğrulama hatası",
+        "validation": "Geçersiz veri",
+        "not_found": "Bulunamadı",
+        "permission": "Yetki hatası"
+    },
+    "success": {
+        "saved": "Başarıyla kaydedildi",
+        "deleted": "Başarıyla silindi",
+        "updated": "Başarıyla güncellendi",
+        "created": "Başarıyla oluşturuldu"
+    }
+}
