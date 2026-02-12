@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea"
 import { Sparkles } from "lucide-react";
+import { IndustryTemplateSelector } from "@/components/IndustryTemplateSelector";
 
 export function Step1Business() {
     const { data, setData, setStep } = useFinancialStore();
@@ -120,6 +121,16 @@ export function Step1Business() {
                             <SelectItem value="Other">Diğer</SelectItem>
                         </SelectContent>
                     </Select>
+                </div>
+
+                <div className="pt-6 border-t mt-4">
+                    <Label className="text-base mb-4 block font-semibold">Veya Sektör Şablonu Seçin (AI yerine)</Label>
+                    <div className="bg-muted/30 p-4 rounded-lg border">
+                        <IndustryTemplateSelector onSelect={(template) => {
+                            setSector(template.name);
+                            setData({ sector: template.name });
+                        }} />
+                    </div>
                 </div>
             </CardContent>
             <CardFooter className="flex justify-end">

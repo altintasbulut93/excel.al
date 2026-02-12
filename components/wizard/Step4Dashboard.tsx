@@ -24,10 +24,15 @@ import { ScenarioManager } from "@/components/ScenarioManager";
 import { CostStructureChart } from "@/components/CostStructureChart";
 import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
 import { FinancialParameters } from "@/lib/engine/types";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TimelineEditor } from "@/components/TimelineEditor";
+import { MonthlyChecklist } from "@/components/MonthlyChecklist";
+import { GrowthReport } from "@/components/GrowthReport";
 
 export function Step4Dashboard() {
     const { data, setData, setStep, user, isAdmin, subscriptionTier } = useFinancialStore();
     const [isSaving, setIsSaving] = useState(false);
+    const [savedModelId, setSavedModelId] = useState<string | null>(null);
     const [authOpen, setAuthOpen] = useState(false);
     const [showUpgrade, setShowUpgrade] = useState(false);
 
@@ -80,7 +85,8 @@ export function Step4Dashboard() {
 
         setIsSaving(true);
         try {
-            await saveModelToSupabase(inputWithParams, results, (forceUser || user)?.id);
+            const savedModel = await saveModelToSupabase(inputWithParams, results, (forceUser || user)?.id);
+            if (savedModel) setSavedModelId(savedModel.id);
             alert("Model başarıyla Buluta kaydedildi! 🚀");
         } catch (e: any) {
             console.error(e);
@@ -367,6 +373,61 @@ export function Step4Dashboard() {
 
             {/* NEW: Analytics Intelligence Dashboard */}
             <AnalyticsDashboard result={results} />
+
+            {/* NEW: Engagement Tools (Requires Save) */}
+            <div className="mt-8 pt-8 border-t">
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-bold">Gelişmiş Yönetim Araçları</h3>
+                    {savedModelId && <GrowthReport modelId={savedModelId} />}
+                </div>
+
+                {!savedModelId ? (
+                    <Card className="bg-muted/50 border-dashed">
+                        <CardContent className="flex flex-col items-center justify-center p-8 text-center">
+                            <Lock className="w-12 h-12 text-muted-foreground mb-4" />
+                            <h4 className="text-lg font-semibold mb-2">Bu özellikleri açmak için modeli kaydedin</h4>
+                            <p className="text-muted-foreground mb-4 max-w-md">
+                                Zaman çizelgesi, aylık hedefler ve büyüme raporları gibi gelişmiş özellikleri kullanmak için projenizi buluta kaydedin.
+                            </p>
+                            <Button onClick={() => handleSave()} disabled={isSaving}>
+                                {isSaving ? "Kaydediliyor..." : "Projeyi Kaydet & Devam Et"}
+                            </Button>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <Tabs defaultValue="timeline">
+                        <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
+                            <TabsTrigger value="timeline">Zaman Çizelgesi</TabsTrigger>
+                            <TabsTrigger value="checklist">Aylık Hedefler</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="timeline" className="mt-4">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Olay Yönetimi</CardTitle>
+                                    <CardDescription>Modele etki eden geçmiş ve gelecek olayları yönetin.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <TimelineEditor modelId={savedModelId} />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="checklist" className="mt-4">
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <MonthlyChecklist modelId={savedModelId} />
+                                {/* Info card */}
+                                <Card className="bg-muted/30">
+                                    <CardHeader>
+                                        <CardTitle className="text-base">Neden Önemli?</CardTitle>
+                                        <CardDescription>
+                                            Düzenli veri girişi yaparak modelinizin güvenilirliğini artırın ve yatırımcı raporları oluşturun.
+                                        </CardDescription>
+                                    </CardHeader>
+                                </Card>
+                            </div>
+                        </TabsContent>
+                    </Tabs>
+                )}
+            </div>
 
             {/* Modals */}
             <AuthModal
