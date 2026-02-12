@@ -6,33 +6,70 @@ import { generateFinancialModel } from "@/lib/engine/financials";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
-import { AlertCircle, Download, CheckCircle, TrendingUp, DollarSign, CloudUpload, Lock, LogOut } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { AlertCircle, Download, CheckCircle, TrendingUp, DollarSign, CloudUpload, Lock, LogOut, FileSpreadsheet, FileText, Edit } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { saveModelToSupabase } from "@/lib/db";
 import { useState } from "react";
 import { UpgradeModal } from "@/components/UpgradeModal";
-import { EmailModal } from "@/components/EmailModal";
 import { AuthModal } from "@/components/AuthModal";
 import { supabase } from "@/lib/supabase";
-import { ReverseEngineeringTool } from "@/components/ReverseEngineering";
-import { BenchmarkCard } from "@/components/BenchmarkCard";
+import { DEFAULT_SCENARIOS } from "@/lib/engine/scenarios";
+
+// NEW: Strategic Module Components
+import { ParametersPanel } from "@/components/ParametersPanel";
+import { UnitEconomicsDashboard } from "@/components/UnitEconomicsDashboard";
+import { DeathValleyChart } from "@/components/DeathValleyChart";
+import { ScenarioManager } from "@/components/ScenarioManager";
+import { CostStructureChart } from "@/components/CostStructureChart";
+import { FinancialParameters } from "@/lib/engine/types";
 
 export function Step4Dashboard() {
-    const { data, setStep, user, isAdmin, subscriptionTier } = useFinancialStore();
+    const { data, setData, setStep, user, isAdmin, subscriptionTier } = useFinancialStore();
     const [isSaving, setIsSaving] = useState(false);
     const [authOpen, setAuthOpen] = useState(false);
+    const [showUpgrade, setShowUpgrade] = useState(false);
 
     // Pro features: Admin OR enterprise/pro tier
     const isPro = isAdmin || subscriptionTier === 'pro' || subscriptionTier === 'enterprise';
 
-    // Hesaplamayı çalıştır
-    const results = generateFinancialModel(data);
+    // Parameters state (with defaults)
+    const [parameters, setParameters] = useState<FinancialParameters>(
+        data.parameters || {
+            usdRate: 34.50,
+            eurRate: 37.20,
+            inflationRate: 0.40,
+            salaryIncreaseRate: 0.25,
+            taxRate: 0.25
+        }
+    );
+
+    // Calculate financial model with current parameters
+    const inputWithParams = {
+        ...data,
+        parameters,
+        scenarios: DEFAULT_SCENARIOS, // Enable scenarios
+        enableUnitEconomics: true
+    };
+
+    const results = generateFinancialModel(inputWithParams);
     const summary = results.summary;
     const monthlyData = results.monthly;
     const redFlags = results.redFlags;
 
+    // Handlers
     const handleEdit = () => setStep(0);
+
+    const handleParametersChange = (newParams: FinancialParameters) => {
+        setParameters(newParams);
+        // Update store
+        setData({ parameters: newParams });
+    };
+
+    const handleRecalculate = () => {
+        // Force re-render by updating data
+        setData({ parameters });
+    };
 
     const handleSave = async (forceUser?: any) => {
         if (!user && !forceUser) {
@@ -42,24 +79,27 @@ export function Step4Dashboard() {
 
         setIsSaving(true);
         try {
-            await saveModelToSupabase(data, results, (forceUser || user)?.id);
+            await saveModelToSupabase(inputWithParams, results, (forceUser || user)?.id);
             alert("Model başarıyla Buluta kaydedildi! 🚀");
         } catch (e: any) {
             console.error(e);
-            alert(`hata: ${e.message}`);
+            alert(`Hata: ${e.message}`);
         } finally {
             setIsSaving(false);
         }
     };
 
     const handleDownloadExcel = async () => {
-        if (!isPro) return;
+        if (!isPro) {
+            setShowUpgrade(true);
+            return;
+        }
 
         try {
             const response = await fetch('/api/generate-excel', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
+                body: JSON.stringify(inputWithParams),
             });
 
             if (!response.ok) throw new Error("İndirme başarısız");
@@ -75,16 +115,21 @@ export function Step4Dashboard() {
             document.body.removeChild(a);
         } catch (e: any) {
             console.error(e);
-            alert("Hata.");
+            alert("Excel indirme hatası.");
         }
     };
 
     const handleDownloadPDF = async () => {
+        if (!isPro) {
+            setShowUpgrade(true);
+            return;
+        }
+
         try {
             const response = await fetch('/api/generate-pdf', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
+                body: JSON.stringify(inputWithParams),
             });
 
             if (!response.ok) throw new Error("PDF indirme başarısız");
@@ -104,213 +149,234 @@ export function Step4Dashboard() {
         }
     };
 
+    const handleLogout = async () => {
+        await supabase?.auth.signOut();
+        window.location.reload();
+    };
+
+    // Chart data
+    const chartData = monthlyData.slice(0, 12).map(m => ({
+        month: `${m.month}. Ay`,
+        revenue: m.revenue,
+        expenses: m.totalExpenses,
+        profit: m.netIncome,
+        cash: m.cashFlow.endingBalance
+    }));
+
     return (
-        <div className="w-full max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
-
-            <AuthModal
-                isOpen={authOpen}
-                onClose={() => setAuthOpen(false)}
-                onSuccess={(u) => {
-                    setAuthOpen(false);
-                    handleSave(u);
-                }}
-            />
-
-            {/* HEADER */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                <div>
-                    <div className="flex items-center gap-2">
-                        <h1 className="text-3xl font-bold tracking-tight">Finansal Projeksiyon: {data.businessName}</h1>
-                        {user && <Badge variant="secondary" className="text-xs">{user.email}</Badge>}
+        <div className="max-w-7xl mx-auto space-y-8 pb-20">
+            {/* Header */}
+            <div className="text-center space-y-4">
+                <div className="inline-block p-3 rounded-2xl bg-white shadow-xl mb-4">
+                    <div className="text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
+                        excel.al
                     </div>
-                    <p className="text-muted-foreground">{data.sector} • {data.revenueModel}</p>
                 </div>
-                <div className="flex space-x-2 items-center flex-wrap gap-y-2 justify-center">
-                    {!isPro && <UpgradeModal />}
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
+                    {data.businessName || "Finansal Model"} - Dashboard
+                </h1>
+                <p className="text-muted-foreground">
+                    Detaylı finansal analiz ve projeksiyonlar
+                </p>
+            </div>
 
-                    <EmailModal />
-
-                    <Button variant="outline" onClick={() => handleSave()} disabled={isSaving}>
-                        {isSaving ? "Kaydediliyor..." : <><CloudUpload className="mr-2 h-4 w-4" /> {user ? "Kaydet" : "Giriş & Kaydet"}</>}
-                    </Button>
-
-                    <Button variant="ghost" onClick={handleEdit}>Düzenle</Button>
-
-                    {user && supabase && (
-                        <Button variant="ghost" size="icon" onClick={() => supabase.auth.signOut()} title="Çıkış Yap">
-                            <LogOut className="w-4 h-4 text-red-500" />
-                        </Button>
-                    )}
-
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-3 justify-center">
+                <Button onClick={handleEdit} variant="outline" size="lg">
+                    <Edit className="mr-2 h-4 w-4" />
+                    Düzenle
+                </Button>
+                <Button onClick={() => handleSave()} disabled={isSaving} size="lg">
+                    <CloudUpload className="mr-2 h-4 w-4" />
+                    {isSaving ? "Kaydediliyor..." : "Buluta Kaydet"}
+                </Button>
+                <Button
+                    onClick={handleDownloadExcel}
+                    className="bg-green-600 hover:bg-green-700"
+                    size="lg"
+                >
                     {isPro ? (
                         <>
-                            <Button
-                                className="bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-900/20 active:scale-95 transition-transform"
-                                onClick={handleDownloadExcel}
-                            >
-                                <Download className="mr-2 h-4 w-4" /> Excel İndir
-                            </Button>
-                            <Button
-                                className="bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-900/20 active:scale-95 transition-transform"
-                                onClick={handleDownloadPDF}
-                            >
-                                <Download className="mr-2 h-4 w-4" /> PDF İndir
-                            </Button>
+                            <FileSpreadsheet className="mr-2 h-4 w-4" />
+                            Excel İndir
                         </>
                     ) : (
-                        <div title="Pro özellik">
-                            <UpgradeModal
-                                trigger={
-                                    <Button variant="secondary" className="opacity-80">
-                                        <Lock className="mr-2 h-4 w-4" /> Excel + PDF (Pro)
-                                    </Button>
-                                }
-                            />
-                        </div>
+                        <>
+                            <Lock className="mr-2 h-4 w-4" />
+                            Excel (Pro)
+                        </>
                     )}
-                </div>
-            </div>
-
-            {/* KPI CARDS */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card className="shadow-sm border-primary/10">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Toplam Ciro (1. Yıl)</CardTitle>
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-primary">{formatCurrency(summary.totalRevenue)}</div>
-                        <p className="text-xs text-muted-foreground">+%{(data.growth.monthlyGrowthRate * 100).toFixed(0)}/ay büyüme</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="shadow-sm border-primary/10">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Net Kâr Margin</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className={`text-2xl font-bold ${summary.totalProfit > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                            %{summary.totalRevenue > 0 ? ((summary.totalProfit / summary.totalRevenue) * 100).toFixed(1) : 0}
-                        </div>
-                        <p className="text-xs text-muted-foreground">Sektör Ort: %20-30</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="shadow-sm border-primary/10">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Başabaş (Break-Even)</CardTitle>
-                        <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                            {summary.breakevenMonth ? `${summary.breakevenMonth}. Ay` : "Ulaşılamadı"}
-                        </div>
-                        <p className="text-xs text-muted-foreground">Kâra geçilen ilk ay</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="shadow-sm border-primary/10">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Sermaye İhtiyacı</CardTitle>
-                        <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-orange-600">{formatCurrency(summary.neededCapital)}</div>
-                        <p className="text-xs text-muted-foreground">Negatif bakiye riski</p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* CHARTS */}
-            <div className="grid gap-4 md:grid-cols-2">
-                <Card className="col-span-2 lg:col-span-1 shadow-md">
-                    <CardHeader>
-                        <CardTitle>Gelir vs Gider</CardTitle>
-                        <CardDescription>Aylık bazda operasyonel performans</CardDescription>
-                    </CardHeader>
-                    <CardContent className="h-[300px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={monthlyData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="month" tickFormatter={(val) => `${val}.Ay`} />
-                                <YAxis tickFormatter={(val) => `₺${val / 1000}k`} />
-                                <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                                <Legend />
-                                <Bar dataKey="revenue" name="Gelir" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="totalExpenses" name="Gider" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-
-                <Card className="col-span-2 lg:col-span-1 shadow-md">
-                    <CardHeader>
-                        <CardTitle>Nakit Akışı (Kümülatif)</CardTitle>
-                        <CardDescription>Kasa durumu ve runway analizi</CardDescription>
-                    </CardHeader>
-                    <CardContent className="h-[300px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={monthlyData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="month" tickFormatter={(val) => `${val}.Ay`} />
-                                <YAxis tickFormatter={(val) => `₺${val / 1000}k`} />
-                                <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                                <defs>
-                                    <linearGradient id="colorCash" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8} />
-                                        <stop offset="95%" stopColor="#82ca9d" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <Area
-                                    type="monotone"
-                                    dataKey="cashFlow.endingBalance"
-                                    name="Kasa Bakiyesi"
-                                    stroke="#82ca9d"
-                                    fillOpacity={1}
-                                    fill="url(#colorCash)"
-                                />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* BENCHMARKS & RED FLAGS GRID */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <BenchmarkCard />
-
-                {/* RED FLAGS */}
-                {redFlags.length > 0 ? (
-                    <Card className="border-l-4 border-l-yellow-500 bg-yellow-50/50 dark:bg-yellow-900/10 h-full">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-lg flex items-center gap-2 text-yellow-700 dark:text-yellow-500">
-                                <AlertCircle className="h-5 w-5" />
-                                Risk Analizi (Red Flags)
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
-                                {redFlags.map((flag, idx) => (
-                                    <li key={idx} className="text-foreground">{flag}</li>
-                                ))}
-                            </ul>
-                        </CardContent>
-                    </Card>
-                ) : (
-                    <Card className="border-l-4 border-l-green-500 bg-green-50/50 h-full flex items-center justify-center">
-                        <div className="text-center p-6">
-                            <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-2" />
-                            <h3 className="text-lg font-bold text-green-800">Harika!</h3>
-                            <p className="text-green-700">Modelinizde kritik bir risk (red-flag) tespit edilemedi.</p>
-                        </div>
-                    </Card>
+                </Button>
+                <Button
+                    onClick={handleDownloadPDF}
+                    className="bg-red-600 hover:bg-red-700"
+                    size="lg"
+                >
+                    {isPro ? (
+                        <>
+                            <FileText className="mr-2 h-4 w-4" />
+                            PDF İndir
+                        </>
+                    ) : (
+                        <>
+                            <Lock className="mr-2 h-4 w-4" />
+                            PDF (Pro)
+                        </>
+                    )}
+                </Button>
+                {user && (
+                    <Button onClick={handleLogout} variant="ghost" size="lg">
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Çıkış
+                    </Button>
                 )}
             </div>
 
-            {/* REVERSE ENGINEERING TOOL */}
-            <ReverseEngineeringTool />
+            {/* NEW: Parameters Panel */}
+            <ParametersPanel
+                parameters={parameters}
+                onParametersChange={handleParametersChange}
+                onRecalculate={handleRecalculate}
+            />
 
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="border-l-4 border-l-blue-500">
+                    <CardHeader className="pb-3">
+                        <CardDescription className="text-xs font-medium uppercase">Toplam Gelir</CardDescription>
+                        <CardTitle className="text-2xl font-bold text-blue-600">
+                            {formatCurrency(summary.totalRevenue)}
+                        </CardTitle>
+                    </CardHeader>
+                </Card>
+                <Card className="border-l-4 border-l-green-500">
+                    <CardHeader className="pb-3">
+                        <CardDescription className="text-xs font-medium uppercase">Toplam Kâr</CardDescription>
+                        <CardTitle className="text-2xl font-bold text-green-600">
+                            {formatCurrency(summary.totalProfit)}
+                        </CardTitle>
+                    </CardHeader>
+                </Card>
+                <Card className="border-l-4 border-l-purple-500">
+                    <CardHeader className="pb-3">
+                        <CardDescription className="text-xs font-medium uppercase">Başabaş Ayı</CardDescription>
+                        <CardTitle className="text-2xl font-bold text-purple-600">
+                            {summary.breakevenMonth ? `${summary.breakevenMonth}. Ay` : "Yok"}
+                        </CardTitle>
+                    </CardHeader>
+                </Card>
+                <Card className="border-l-4 border-l-orange-500">
+                    <CardHeader className="pb-3">
+                        <CardDescription className="text-xs font-medium uppercase">Gerekli Sermaye</CardDescription>
+                        <CardTitle className="text-2xl font-bold text-orange-600">
+                            {formatCurrency(summary.neededCapital)}
+                        </CardTitle>
+                    </CardHeader>
+                </Card>
+            </div>
+
+            {/* Red Flags */}
+            {redFlags.length > 0 && (
+                <Card className="border-l-4 border-l-red-500 bg-red-50/50 dark:bg-red-950/20">
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2 text-red-700 dark:text-red-300">
+                            <AlertCircle className="w-5 h-5" />
+                            Dikkat Edilmesi Gerekenler
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <ul className="space-y-2">
+                            {redFlags.map((flag, i) => (
+                                <li key={i} className="flex items-start gap-2 text-sm text-red-800 dark:text-red-200">
+                                    <span className="text-red-500">•</span>
+                                    <span>{flag}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* NEW: Unit Economics Dashboard */}
+            {summary.unitEconomics && (
+                <UnitEconomicsDashboard unitEconomics={summary.unitEconomics} />
+            )}
+
+            {/* NEW: Death Valley Chart */}
+            <DeathValleyChart
+                monthly={monthlyData}
+                paybackPeriod={summary.paybackPeriod}
+            />
+
+            {/* Revenue & Profit Chart */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Aylık Gelir ve Kâr Trendi</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={chartData}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="month" />
+                                <YAxis tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`} />
+                                <Tooltip formatter={(value: any) => formatCurrency(value)} />
+                                <Legend />
+                                <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} name="Gelir" />
+                                <Line type="monotone" dataKey="profit" stroke="#22c55e" strokeWidth={2} name="Kâr" />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Cash Flow Chart */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Nakit Akışı</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={chartData}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="month" />
+                                <YAxis tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`} />
+                                <Tooltip formatter={(value: any) => formatCurrency(value)} />
+                                <Legend />
+                                <Bar dataKey="cash" fill="#8b5cf6" name="Nakit Bakiye" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* NEW: Cost Structure Chart */}
+            {summary.costStructure && (
+                <CostStructureChart costStructure={summary.costStructure} />
+            )}
+
+            {/* NEW: Scenario Manager */}
+            {results.scenarios && results.scenarioAnalysis && (
+                <ScenarioManager
+                    scenarios={results.scenarios}
+                    scenarioAnalysis={results.scenarioAnalysis}
+                />
+            )}
+
+            {/* Modals */}
+            <AuthModal
+                open={authOpen}
+                onClose={() => setAuthOpen(false)}
+                onSuccess={(user) => {
+                    setAuthOpen(false);
+                    handleSave(user);
+                }}
+            />
+            <UpgradeModal
+                open={showUpgrade}
+                onClose={() => setShowUpgrade(false)}
+            />
         </div>
     );
 }
