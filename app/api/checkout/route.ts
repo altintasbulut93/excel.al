@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripeSession } from '@/lib/stripe';
 import { PRICING_PLANS } from '@/lib/pricing-plans';
-import { createClient } from '@/lib/supabase'; // Adjust based on your actual Supabase client path
+import { createClient } from '@supabase/supabase-js'; // Import directly
 import { cookies } from 'next/headers';
 
 // Mock function to determine region (In real app, use GeoIP or user selection)
@@ -13,7 +13,11 @@ const getRegion = (req: NextRequest) => {
 
 export async function POST(req: NextRequest) {
     try {
-        const supabase = createClient();
+        // Create client with anon key
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
