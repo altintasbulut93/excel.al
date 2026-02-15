@@ -5,8 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScenarioResult, ScenarioType } from "@/lib/engine/types";
-import { formatCurrency } from "@/lib/utils";
-import { TrendingUp, TrendingDown, Minus, Target, AlertCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, Target } from "lucide-react";
+import { useLanguage } from "@/lib/i18n-context";
+import { useFormat } from "@/hooks/use-format";
 
 interface ScenarioManagerProps {
     scenarios: ScenarioResult[];
@@ -18,6 +19,8 @@ interface ScenarioManagerProps {
 }
 
 export function ScenarioManager({ scenarios, scenarioAnalysis }: ScenarioManagerProps) {
+    const { t } = useLanguage();
+    const { format } = useFormat();
     const [activeScenario, setActiveScenario] = useState<ScenarioType>('base');
 
     const getScenario = (type: ScenarioType) => scenarios.find(s => s.scenario === type);
@@ -27,9 +30,9 @@ export function ScenarioManager({ scenarios, scenarioAnalysis }: ScenarioManager
     const currentScenario = getScenario(activeScenario);
 
     const getRiskLevel = (score: number) => {
-        if (score < 30) return { label: 'Düşük Risk', color: 'green' };
-        if (score < 60) return { label: 'Orta Risk', color: 'orange' };
-        return { label: 'Yüksek Risk', color: 'red' };
+        if (score < 30) return { label: t('dashboard.risk_low'), color: 'green' };
+        if (score < 60) return { label: t('dashboard.risk_medium'), color: 'orange' };
+        return { label: t('dashboard.risk_high'), color: 'red' };
     };
 
     const riskLevel = scenarioAnalysis ? getRiskLevel(scenarioAnalysis.riskScore) : null;
@@ -42,10 +45,10 @@ export function ScenarioManager({ scenarios, scenarioAnalysis }: ScenarioManager
                     <div className="flex items-center justify-between">
                         <div>
                             <CardTitle className="text-2xl font-bold text-indigo-900 dark:text-indigo-100">
-                                Çoklu Senaryo Analizi
+                                {t('revenue.advanced_title')}
                             </CardTitle>
                             <CardDescription>
-                                İyi, Orta ve Kötü senaryoları karşılaştırın
+                                {t('revenue.advanced_desc')}
                             </CardDescription>
                         </div>
                         {riskLevel && (
@@ -60,23 +63,23 @@ export function ScenarioManager({ scenarios, scenarioAnalysis }: ScenarioManager
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="p-4 bg-white dark:bg-slate-800 rounded-lg border">
                                 <p className="text-xs font-medium text-muted-foreground uppercase mb-1">
-                                    Ortalama Gelir
+                                    {t('dashboard.revenue')}
                                 </p>
                                 <p className="text-2xl font-bold text-indigo-600">
-                                    {formatCurrency(scenarioAnalysis.averageRevenue)}
+                                    {format(scenarioAnalysis.averageRevenue)}
                                 </p>
                             </div>
                             <div className="p-4 bg-white dark:bg-slate-800 rounded-lg border">
                                 <p className="text-xs font-medium text-muted-foreground uppercase mb-1">
-                                    Ortalama Kâr
+                                    {t('dashboard.monthly_story.net_profit')}
                                 </p>
                                 <p className="text-2xl font-bold text-indigo-600">
-                                    {formatCurrency(scenarioAnalysis.averageProfit)}
+                                    {format(scenarioAnalysis.averageProfit)}
                                 </p>
                             </div>
                             <div className="p-4 bg-white dark:bg-slate-800 rounded-lg border">
                                 <p className="text-xs font-medium text-muted-foreground uppercase mb-1">
-                                    Risk Skoru
+                                    {t('dashboard.risk_index')}
                                 </p>
                                 <p className={`text-2xl font-bold text-${riskLevel?.color}-600`}>
                                     {scenarioAnalysis.riskScore.toFixed(0)}/100
@@ -92,15 +95,15 @@ export function ScenarioManager({ scenarios, scenarioAnalysis }: ScenarioManager
                 <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="best" className="flex items-center gap-2">
                         <TrendingUp className="w-4 h-4" />
-                        İyi Senaryo
+                        {t('revenue.optimistic')}
                     </TabsTrigger>
                     <TabsTrigger value="base" className="flex items-center gap-2">
                         <Target className="w-4 h-4" />
-                        Orta Senaryo
+                        {t('revenue.base')}
                     </TabsTrigger>
                     <TabsTrigger value="worst" className="flex items-center gap-2">
                         <TrendingDown className="w-4 h-4" />
-                        Kötü Senaryo
+                        {t('revenue.pessimistic')}
                     </TabsTrigger>
                 </TabsList>
 
@@ -129,66 +132,66 @@ export function ScenarioManager({ scenarios, scenarioAnalysis }: ScenarioManager
             {/* Comparison Table */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-lg">Senaryo Karşılaştırması</CardTitle>
+                    <CardTitle className="text-lg">{t('revenue.comparison_summary')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="border-b">
-                                    <th className="text-left p-2 font-semibold">Metrik</th>
-                                    <th className="text-right p-2 font-semibold text-green-600">İyi</th>
-                                    <th className="text-right p-2 font-semibold text-blue-600">Orta</th>
-                                    <th className="text-right p-2 font-semibold text-red-600">Kötü</th>
+                                <tr className="border-b text-slate-500">
+                                    <th className="text-left p-2 font-semibold">{t('common.metric')}</th>
+                                    <th className="text-right p-2 font-semibold text-emerald-600">{t('revenue.optimistic')}</th>
+                                    <th className="text-right p-2 font-semibold text-blue-600">{t('revenue.base')}</th>
+                                    <th className="text-right p-2 font-semibold text-rose-600">{t('revenue.pessimistic')}</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr className="border-b">
-                                    <td className="p-2">Toplam Gelir</td>
-                                    <td className="text-right p-2 text-green-700 font-semibold">
-                                        {formatCurrency(bestScenario?.summary.totalRevenue || 0)}
+                                    <td className="p-2">{t('dashboard.total_revenue')}</td>
+                                    <td className="text-right p-2 text-emerald-700 font-semibold font-mono">
+                                        {format(bestScenario?.summary.totalRevenue || 0)}
                                     </td>
-                                    <td className="text-right p-2 text-blue-700 font-semibold">
-                                        {formatCurrency(baseScenario?.summary.totalRevenue || 0)}
+                                    <td className="text-right p-2 text-blue-700 font-semibold font-mono">
+                                        {format(baseScenario?.summary.totalRevenue || 0)}
                                     </td>
-                                    <td className="text-right p-2 text-red-700 font-semibold">
-                                        {formatCurrency(worstScenario?.summary.totalRevenue || 0)}
-                                    </td>
-                                </tr>
-                                <tr className="border-b">
-                                    <td className="p-2">Toplam Kâr</td>
-                                    <td className="text-right p-2 text-green-700 font-semibold">
-                                        {formatCurrency(bestScenario?.summary.totalProfit || 0)}
-                                    </td>
-                                    <td className="text-right p-2 text-blue-700 font-semibold">
-                                        {formatCurrency(baseScenario?.summary.totalProfit || 0)}
-                                    </td>
-                                    <td className="text-right p-2 text-red-700 font-semibold">
-                                        {formatCurrency(worstScenario?.summary.totalProfit || 0)}
+                                    <td className="text-right p-2 text-rose-700 font-semibold font-mono">
+                                        {format(worstScenario?.summary.totalRevenue || 0)}
                                     </td>
                                 </tr>
                                 <tr className="border-b">
-                                    <td className="p-2">Başabaş Ayı</td>
+                                    <td className="p-2">{t('dashboard.monthly_story.net_profit')}</td>
+                                    <td className="text-right p-2 text-emerald-700 font-semibold font-mono">
+                                        {format(bestScenario?.summary.totalProfit || 0)}
+                                    </td>
+                                    <td className="text-right p-2 text-blue-700 font-semibold font-mono">
+                                        {format(baseScenario?.summary.totalProfit || 0)}
+                                    </td>
+                                    <td className="text-right p-2 text-rose-700 font-semibold font-mono">
+                                        {format(worstScenario?.summary.totalProfit || 0)}
+                                    </td>
+                                </tr>
+                                <tr className="border-b">
+                                    <td className="p-2">{t('dashboard.breakeven_point')}</td>
                                     <td className="text-right p-2">
-                                        {bestScenario?.summary.breakevenMonth ? `${bestScenario.summary.breakevenMonth}. Ay` : 'Yok'}
+                                        {bestScenario?.summary.breakevenMonth ? `${bestScenario.summary.breakevenMonth}. ${t('common.month')}` : t('revenue.no_items')}
                                     </td>
                                     <td className="text-right p-2">
-                                        {baseScenario?.summary.breakevenMonth ? `${baseScenario.summary.breakevenMonth}. Ay` : 'Yok'}
+                                        {baseScenario?.summary.breakevenMonth ? `${baseScenario.summary.breakevenMonth}. ${t('common.month')}` : t('revenue.no_items')}
                                     </td>
                                     <td className="text-right p-2">
-                                        {worstScenario?.summary.breakevenMonth ? `${worstScenario.summary.breakevenMonth}. Ay` : 'Yok'}
+                                        {worstScenario?.summary.breakevenMonth ? `${worstScenario.summary.breakevenMonth}. ${t('common.month')}` : t('revenue.no_items')}
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td className="p-2">Gerekli Sermaye</td>
-                                    <td className="text-right p-2">
-                                        {formatCurrency(bestScenario?.summary.neededCapital || 0)}
+                                    <td className="p-2">{t('common.capital')} {t('dashboard.evaluation')}</td>
+                                    <td className="text-right p-2 font-mono">
+                                        {format(bestScenario?.summary.neededCapital || 0)}
                                     </td>
-                                    <td className="text-right p-2">
-                                        {formatCurrency(baseScenario?.summary.neededCapital || 0)}
+                                    <td className="text-right p-2 font-mono">
+                                        {format(baseScenario?.summary.neededCapital || 0)}
                                     </td>
-                                    <td className="text-right p-2">
-                                        {formatCurrency(worstScenario?.summary.neededCapital || 0)}
+                                    <td className="text-right p-2 font-mono">
+                                        {format(worstScenario?.summary.neededCapital || 0)}
                                     </td>
                                 </tr>
                             </tbody>
@@ -202,6 +205,9 @@ export function ScenarioManager({ scenarios, scenarioAnalysis }: ScenarioManager
 
 // Scenario Card Component
 function ScenarioCard({ scenario, color }: { scenario: ScenarioResult; color: 'green' | 'blue' | 'red' }) {
+    const { t } = useLanguage();
+    const { format } = useFormat();
+
     const colorClasses = {
         green: {
             bg: 'bg-green-50 dark:bg-green-950/20',
@@ -241,22 +247,22 @@ function ScenarioCard({ scenario, color }: { scenario: ScenarioResult; color: 'g
             <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
-                        <p className="text-xs text-muted-foreground uppercase mb-1">Toplam Gelir</p>
-                        <p className="text-xl font-bold">{formatCurrency(scenario.summary.totalRevenue)}</p>
+                        <p className="text-xs text-muted-foreground uppercase mb-1">{t('dashboard.total_revenue')}</p>
+                        <p className="text-xl font-bold font-mono">{format(scenario.summary.totalRevenue)}</p>
                     </div>
                     <div>
-                        <p className="text-xs text-muted-foreground uppercase mb-1">Toplam Kâr</p>
-                        <p className="text-xl font-bold">{formatCurrency(scenario.summary.totalProfit)}</p>
+                        <p className="text-xs text-muted-foreground uppercase mb-1">{t('dashboard.monthly_story.net_profit')}</p>
+                        <p className="text-xl font-bold font-mono">{format(scenario.summary.totalProfit)}</p>
                     </div>
                     <div>
-                        <p className="text-xs text-muted-foreground uppercase mb-1">Başabaş</p>
+                        <p className="text-xs text-muted-foreground uppercase mb-1">{t('dashboard.breakeven_point')}</p>
                         <p className="text-xl font-bold">
-                            {scenario.summary.breakevenMonth ? `${scenario.summary.breakevenMonth}. Ay` : 'Yok'}
+                            {scenario.summary.breakevenMonth ? `${scenario.summary.breakevenMonth}. ${t('common.month')}` : t('revenue.no_items')}
                         </p>
                     </div>
                     <div>
-                        <p className="text-xs text-muted-foreground uppercase mb-1">Sermaye İhtiyacı</p>
-                        <p className="text-xl font-bold">{formatCurrency(scenario.summary.neededCapital)}</p>
+                        <p className="text-xs text-muted-foreground uppercase mb-1">{t('common.capital')}</p>
+                        <p className="text-xl font-bold font-mono">{format(scenario.summary.neededCapital)}</p>
                     </div>
                 </div>
             </CardContent>

@@ -264,33 +264,38 @@ export function calculateRiskIndex(result: FinancialModelResult): number {
  * Get risk level label and color
  */
 export function getRiskLevel(riskIndex: number): {
+    level: 'low' | 'medium' | 'high' | 'critical';
     label: string;
     color: 'green' | 'yellow' | 'orange' | 'red';
     description: string;
 } {
     if (riskIndex < 25) {
         return {
-            label: 'Düşük Risk',
+            level: 'low',
+            label: 'risk_low',
             color: 'green',
-            description: 'Finansal durum sağlıklı ve sürdürülebilir'
+            description: 'risk_low_desc'
         };
     } else if (riskIndex < 50) {
         return {
-            label: 'Orta Risk',
+            level: 'medium',
+            label: 'risk_medium',
             color: 'yellow',
-            description: 'Dikkatli yönetim gerekiyor'
+            description: 'risk_medium_desc'
         };
     } else if (riskIndex < 75) {
         return {
-            label: 'Yüksek Risk',
+            level: 'high',
+            label: 'risk_high',
             color: 'orange',
-            description: 'Acil aksiyonlar gerekli'
+            description: 'risk_high_desc'
         };
     } else {
         return {
-            label: 'Kritik Risk',
+            level: 'critical',
+            label: 'risk_critical',
             color: 'red',
-            description: 'İşletme sürekliliği tehlikede'
+            description: 'risk_critical_desc'
         };
     }
 }

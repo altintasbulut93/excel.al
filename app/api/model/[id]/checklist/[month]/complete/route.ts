@@ -13,10 +13,10 @@ const DEFAULT_TASKS = [
 
 export async function POST(
     request: NextRequest,
-    { params }: { params: { id: string, month: string } }
+    { params }: { params: Promise<{ id: string, month: string }> }
 ) {
     try {
-        const { id: model_id, month } = params;
+        const { id: model_id, month } = await params;
         const body = await request.json();
         const { taskId } = body;
 

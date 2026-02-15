@@ -6,10 +6,11 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const model_id = params.id;
+        const { id } = await params;
+        const model_id = id;
         const authHeader = request.headers.get('Authorization');
 
         if (!authHeader) {
@@ -36,10 +37,11 @@ export async function GET(
 
 export async function POST(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const model_id = params.id;
+        const { id } = await params;
+        const model_id = id;
         const body = await request.json();
         const { event_type, event_name, effective_date, payload } = body;
         const authHeader = request.headers.get('Authorization');
@@ -48,14 +50,43 @@ export async function POST(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        const token = authHeader.split(' ')[1];
+        if (!token) {
+            return NextResponse.json({ error: 'Invalid Token' }, { status: 401 });
+        }
+
         const supabase = createClient(supabaseUrl, supabaseAnonKey, {
             global: { headers: { Authorization: authHeader } },
         });
 
-        // Verify/Get User
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        // Verify/Get User using token explicitly
+        const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+
         if (userError || !user) {
-            return NextResponse.json({ error: 'User not found' }, { status: 401 });
+            console.error("Auth Fail:", userError);
+            return NextResponse.json({ error: 'User not found or token invalid' }, { status: 401 });
+        }
+
+        // Ownership Check (Explicit)
+        // This helps diagnose RLS failures by catching mismatch early
+        const { data: model, error: modelError } = await supabase
+            .from('financial_models')
+            .select('user_id')
+            .eq('id', model_id)
+            .single();
+
+        if (modelError || !model) {
+            console.error(`Model Not Found Debug: User ${user.id} lookup model ${model_id}. Error:`, modelError);
+            return NextResponse.json({
+                error: `Model bulunamadı. (User: ${user.id}, Model: ${model_id}). RLS policy engeliyor olabilir.`
+            }, { status: 404 });
+        }
+
+        if (model.user_id !== user.id) {
+            console.error(`RLS Mismatch: Model Owner ${model.user_id} vs Request User ${user.id}`);
+            return NextResponse.json({
+                error: 'Model sahipliği doğrulanamadı. Lütfen sayfayı yenileyip modeli tekrar kaydedin.'
+            }, { status: 403 });
         }
 
         const { data: event, error } = await supabase

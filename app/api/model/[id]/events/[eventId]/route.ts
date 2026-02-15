@@ -6,10 +6,10 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { id: string, eventId: string } }
+    { params }: { params: Promise<{ id: string, eventId: string }> }
 ) {
     try {
-        const { id: model_id, eventId } = params;
+        const { id: model_id, eventId } = await params;
         const body = await request.json();
         const { event_type, event_name, effective_date, payload } = body;
         const authHeader = request.headers.get('Authorization');
@@ -56,10 +56,10 @@ export async function PUT(
 
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string, eventId: string } }
+    { params }: { params: Promise<{ id: string, eventId: string }> }
 ) {
     try {
-        const { id: model_id, eventId } = params;
+        const { id: model_id, eventId } = await params;
         const authHeader = request.headers.get('Authorization');
 
         if (!authHeader) {

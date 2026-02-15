@@ -1,10 +1,13 @@
+
 "use client";
 
 import { useState } from "react";
 import { useFinancialStore } from "@/lib/store";
 import { format } from "date-fns";
-import { FileText, Share2, Download, Loader2, Check } from "lucide-react";
+import { FileText, Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/lib/i18n-context";
+
 import {
     Dialog,
     DialogContent,
@@ -15,115 +18,80 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ReportPreviewModal } from "@/components/modals/ReportPreviewModal";
+import { UpgradeModal } from "@/components/UpgradeModal";
 
 export function GrowthReport({ modelId }: { modelId: string }) {
+    const { t, language } = useLanguage();
     const [open, setOpen] = useState(false);
-    const [loading, setLoading] = useState(false);
+    const [previewOpen, setPreviewOpen] = useState(false);
     const [reportType, setReportType] = useState('monthly');
-    const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+    const [showUpgrade, setShowUpgrade] = useState(false);
 
-    async function handleGenerate() {
-        setLoading(true);
-        try {
-            const res = await fetch(`/api/model/${modelId}/generate-report`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    report_type: reportType,
-                    report_month: format(new Date(), 'yyyy-MM-dd')
-                })
-            });
-            const data = await res.json();
+    const { isAdmin, subscriptionTier } = useFinancialStore();
+    const isPro = isAdmin || subscriptionTier === 'pro' || subscriptionTier === 'enterprise';
 
-            if (data.success) {
-                // In a real app, this link would point to the public report page
-                // For MVP, we point to a placeholder or the dashboard itself
-                const link = `${window.location.origin}/report/${data.report.id}`;
-                setGeneratedLink(link);
-            }
-        } catch (error) {
-            console.error('Error generating report:', error);
-        } finally {
-            setLoading(false);
+    const handleCreateClick = () => {
+        if (!isPro) {
+            setShowUpgrade(true);
+            return;
         }
-    }
-
-    const copyLink = () => {
-        if (generatedLink) {
-            navigator.clipboard.writeText(generatedLink);
-            alert('Link kopyalandı!');
-        }
+        setPreviewOpen(true);
+        setOpen(false);
     };
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                    <FileText className="w-4 h-4" />
-                    Rapor Oluştur
-                </Button>
-            </DialogTrigger>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Büyüme Raporu Oluştur</DialogTitle>
-                    <DialogDescription>
-                        Finansal durumunuzu özetleyen ve paylaşılabilir bir rapor oluşturun.
-                    </DialogDescription>
-                </DialogHeader>
+        <>
+            <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline" className="gap-2">
+                        <FileText className="w-4 h-4" />
+                        {t('dashboard.report.title')}
+                    </Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{t('dashboard.report.title')}</DialogTitle>
+                        <DialogDescription>
+                            {t('dashboard.report.desc')}
+                        </DialogDescription>
+                    </DialogHeader>
 
-                {!generatedLink ? (
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label className="text-right">Rapor Tipi</Label>
+                            <Label className="text-right">{t('dashboard.report.type')}</Label>
                             <Select value={reportType} onValueChange={setReportType}>
                                 <SelectTrigger className="col-span-3">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="monthly">Aylık Özet</SelectItem>
-                                    <SelectItem value="quarterly">Çeyrek Dönem</SelectItem>
-                                    <SelectItem value="share">Yatırımcı Paylaşımı</SelectItem>
+                                    <SelectItem value="monthly">{t('dashboard.report.monthly')}</SelectItem>
+                                    <SelectItem value="investor">{t('dashboard.report.investor')}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                     </div>
-                ) : (
-                    <div className="py-6 space-y-4 text-center">
-                        <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-2">
-                            <Check className="w-6 h-6" />
-                        </div>
-                        <h3 className="font-medium text-lg">Rapor Hazır!</h3>
-                        <p className="text-muted-foreground text-sm">
-                            Raporunuz başarıyla oluşturuldu. Aşağıdaki linki kullanarak paylaşabilirsiniz.
-                        </p>
 
-                        <div className="flex items-center gap-2 mt-4">
-                            <Input value={generatedLink} readOnly />
-                            <Button size="icon" onClick={copyLink}>
-                                <Share2 className="w-4 h-4" />
-                            </Button>
-                        </div>
-
-                        <div className="flex justify-center gap-2 pt-2">
-                            <Button variant="outline" className="gap-2">
-                                <Download className="w-4 h-4" />
-                                PDF İndir
-                            </Button>
-                        </div>
-                    </div>
-                )}
-
-                {!generatedLink && (
                     <DialogFooter>
-                        <Button onClick={handleGenerate} disabled={loading}>
-                            {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            Oluştur
+                        <Button onClick={handleCreateClick} className="w-full sm:w-auto" variant={isPro ? "default" : "secondary"}>
+                            {!isPro && <Lock className="w-3 h-3 mr-2" />}
+                            {t('dashboard.report.create')}
                         </Button>
                     </DialogFooter>
-                )}
-            </DialogContent>
-        </Dialog>
+                </DialogContent>
+            </Dialog>
+
+            <ReportPreviewModal
+                isOpen={previewOpen}
+                onClose={() => setPreviewOpen(false)}
+                reportType={reportType}
+            />
+
+            <UpgradeModal
+                open={showUpgrade}
+                onClose={() => setShowUpgrade(false)}
+            />
+        </>
     );
 }

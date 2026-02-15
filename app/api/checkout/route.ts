@@ -1,42 +1,45 @@
-
-
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
+import { getStripeSession } from '@/lib/stripe';
+import { PRICING_PLANS } from '@/lib/pricing-plans';
+import { createClient } from '@/lib/supabase'; // Adjust based on your actual Supabase client path
+import { cookies } from 'next/headers';
 
-const PRICE_ID = 'price_1Sz0ABCDEF...'; // You need to replace this with your actual Price ID from Stripe Dashboard
+// Mock function to determine region (In real app, use GeoIP or user selection)
+const getRegion = (req: NextRequest) => {
+    // Check header or query param
+    const region = req.nextUrl.searchParams.get('region');
+    return region === 'TR' ? 'TR' : 'GLOBAL';
+};
 
 export async function POST(req: NextRequest) {
     try {
-        const { modelId } = await req.json();
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
 
-        // Create Stripe client at runtime
-        const apiKey = process.env.STRIPE_SECRET_KEY;
-        if (!apiKey) {
-            return NextResponse.json({ error: 'STRIPE_SECRET_KEY not configured' }, { status: 500 });
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const stripe = new Stripe(apiKey, {
-            apiVersion: '2026-01-28.clover',
-        });
+        const body = await req.json();
+        const { planFreq, region } = body; // 'monthly' | 'yearly', 'TR' | 'GLOBAL'
 
-        const session = await stripe.checkout.sessions.create({
-            line_items: [
-                {
-                    price: PRICE_ID,
-                    quantity: 1,
-                },
-            ],
-            mode: 'subscription', // or 'payment' for one-time
-            success_url: `${req.headers.get('origin')}/success?session_id={CHECKOUT_SESSION_ID}&model_id=${modelId}`,
-            cancel_url: `${req.headers.get('origin')}/?canceled=true`,
-            metadata: {
-                modelId: modelId
-            }
-        });
+        // Determine Price ID
+        const selectedRegion = region === 'TR' ? 'TR' : 'GLOBAL';
+        const plans = PRICING_PLANS[selectedRegion];
+        const priceId = planFreq === 'yearly' ? plans.yearly.priceId : plans.monthly.priceId;
 
-        return NextResponse.json({ sessionId: session.id, url: session.url });
-    } catch (err: any) {
-        console.error(err);
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        // Create Session
+        const session = await getStripeSession(
+            priceId,
+            user.id,
+            user.email || '',
+            `${req.nextUrl.origin}/dashboard?payment=success`,
+            `${req.nextUrl.origin}/pricing?payment=cancelled`
+        );
+
+        return NextResponse.json({ url: session.url });
+    } catch (error: any) {
+        console.error('Checkout Error:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

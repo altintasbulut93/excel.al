@@ -6,19 +6,32 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Format a number as Turkish Lira currency
+ * Format a number as currency using Intl.NumberFormat
  * @param value - The number to format
- * @returns Formatted currency string (e.g., "₺1.234,56")
+ * @param currency - Currency code (e.g., "TRY", "USD", "EUR")
+ * @param locale - Locale string (e.g., "tr-TR", "en-US")
+ * @returns Formatted currency string
  */
-export function formatCurrency(value: number): string {
+export function formatCurrency(value: number, currency: string = 'TRY', locale: string = 'tr-TR'): string {
   if (value === null || value === undefined || isNaN(value)) {
-    return "₺0";
+    return "0";
   }
 
-  return new Intl.NumberFormat('tr-TR', {
-    style: 'currency',
-    currency: 'TRY',
+  // Number format without currency for the numeric part
+  const numerFormatter = new Intl.NumberFormat(locale, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(value);
+  });
+
+  const formattedValue = numerFormatter.format(value);
+
+  // Symbol mapping
+  let symbol = '₺';
+  if (currency === 'USD') symbol = '$';
+  else if (currency === 'EUR') symbol = '€';
+  else if (currency === 'GBP') symbol = '£';
+  else if (currency === 'TRY') symbol = '₺';
+
+  // Return with symbol at the end (as requested: "sayılaların sonunda seçilen para kısaltması logosu olsun")
+  return `${formattedValue} ${symbol}`;
 }

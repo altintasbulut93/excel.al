@@ -75,75 +75,82 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.financial_models ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.scenario_templates ENABLE ROW LEVEL SECURITY;
 
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles p 
+    WHERE p.id = auth.uid() AND p.is_admin = TRUE
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Profiles Policies
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
 CREATE POLICY "Users can view their own profile"
   ON public.profiles FOR SELECT
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile"
   ON public.profiles FOR UPDATE
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
 CREATE POLICY "Admins can view all profiles"
   ON public.profiles FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND is_admin = TRUE
-    )
-  );
+  USING (public.is_admin());
 
 -- Financial Models Policies
+DROP POLICY IF EXISTS "Users can view own models" ON public.financial_models;
 CREATE POLICY "Users can view own models"
   ON public.financial_models FOR SELECT
   USING (
     auth.uid() = user_id 
     OR 
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND is_admin = TRUE
-    )
+    public.is_admin()
   );
 
+DROP POLICY IF EXISTS "Authenticated users can create models" ON public.financial_models;
 CREATE POLICY "Authenticated users can create models"
   ON public.financial_models FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own models" ON public.financial_models;
 CREATE POLICY "Users can update own models"
   ON public.financial_models FOR UPDATE
   USING (
     auth.uid() = user_id 
     OR 
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND is_admin = TRUE
-    )
+    public.is_admin()
   );
 
+DROP POLICY IF EXISTS "Users can delete own models" ON public.financial_models;
 CREATE POLICY "Users can delete own models"
   ON public.financial_models FOR DELETE
   USING (
     auth.uid() = user_id 
     OR 
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND is_admin = TRUE
-    )
+    public.is_admin()
   );
 
 -- Scenario Templates Policies
+DROP POLICY IF EXISTS "Users can view own templates and public templates" ON public.scenario_templates;
 CREATE POLICY "Users can view own templates and public templates"
   ON public.scenario_templates FOR SELECT
   USING (auth.uid() = user_id OR is_public = TRUE);
 
+DROP POLICY IF EXISTS "Users can create templates" ON public.scenario_templates;
 CREATE POLICY "Users can create templates"
   ON public.scenario_templates FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own templates" ON public.scenario_templates;
 CREATE POLICY "Users can update own templates"
   ON public.scenario_templates FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own templates" ON public.scenario_templates;
 CREATE POLICY "Users can delete own templates"
   ON public.scenario_templates FOR DELETE
   USING (auth.uid() = user_id);
@@ -168,7 +175,8 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public.profiles (id, email, full_name)
-  VALUES (NEW.id, NEW.email, NEW.raw_user_meta_data->>'full_name');
+  VALUES (NEW.id, NEW.email, NEW.raw_user_meta_data->>'full_name')
+  ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

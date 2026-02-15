@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react";
 import { useFinancialStore } from "@/lib/store";
 import { format } from "date-fns";
+import { tr, enUS } from "date-fns/locale";
 import { Check, Loader2, Award } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/lib/i18n-context";
 
 interface ChecklistTask {
     id: string;
@@ -23,10 +25,12 @@ interface MonthlyChecklistData {
 }
 
 export function MonthlyChecklist({ modelId }: { modelId: string }) {
+    const { t, language } = useLanguage();
     const [checklist, setChecklist] = useState<MonthlyChecklistData | null>(null);
     const [loading, setLoading] = useState(true);
     const [currentMonth] = useState(format(new Date(), 'yyyy-MM-dd'));
     const { user } = useFinancialStore();
+    const dateLocale = language === 'tr' ? tr : enUS;
 
     useEffect(() => {
         if (modelId && user) {
@@ -103,11 +107,11 @@ export function MonthlyChecklist({ modelId }: { modelId: string }) {
                 <div className="flex items-center justify-between">
                     <div>
                         <CardTitle className="text-lg flex items-center gap-2">
-                            📅 Aylık Kontrol Listesi
+                            {t('dashboard.checklist.title')}
                             {isComplete && <Award className="w-5 h-5 text-yellow-500" />}
                         </CardTitle>
                         <CardDescription>
-                            {format(new Date(currentMonth), 'MMMM yyyy')} için yapılması gerekenler
+                            {t('dashboard.checklist.desc', { date: format(new Date(currentMonth), 'MMMM yyyy', { locale: dateLocale }) })}
                         </CardDescription>
                     </div>
                     <div className="text-sm font-medium text-muted-foreground">
@@ -144,7 +148,7 @@ export function MonthlyChecklist({ modelId }: { modelId: string }) {
 
                 {isComplete && (
                     <div className="mt-4 p-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg text-sm text-center font-medium animate-in fade-in zoom-in">
-                        🎉 Harika! Bu ayki hedeflerini tamamladın.
+                        {t('dashboard.checklist.complete_msg')}
                     </div>
                 )}
             </CardContent>

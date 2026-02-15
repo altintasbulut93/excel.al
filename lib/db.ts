@@ -15,14 +15,33 @@ export async function saveModelToSupabase(input: FinancialInput, results: Financ
             uid = data.user?.id;
         }
 
-        // Insert Inputs as separate columns for easier querying if needed, or just dump to JSON
+        if (!uid) {
+            throw new Error("Kullanıcı oturumu bulunamadı. Lütfen tekrar giriş yapın.");
+        }
+
+        // Prepare record with enhanced fields
         const record = {
             business_name: input.businessName,
             sector: input.sector,
-            inputs: input,
-            outputs: results.summary,
+            inputs: input, // Store raw inputs
+            outputs: results, // Store full results cache
             user_id: uid || null,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+
+            // Strategic Modules Data
+            unit_economics: results.summary.unitEconomics || {},
+            scenarios: results.scenarios || [],
+            parameters: input.parameters || {},
+            cost_structure: results.summary.costStructure || {},
+
+            // Key Metrics for easy querying
+            total_revenue: results.summary.totalRevenue || 0,
+            total_profit: results.summary.totalProfit || 0,
+            breakeven_month: results.summary.breakevenMonth,
+            cac: results.summary.unitEconomics?.cac || 0,
+            ltv: results.summary.unitEconomics?.ltv || 0,
+            ltv_cac_ratio: results.summary.unitEconomics?.ltvCacRatio || 0,
+            churn_rate: input.growth.churnRate || 0
         };
 
         // Check if we should update or insert? For MVP simple insert (new version) or we need model_id in store
@@ -35,7 +54,7 @@ export async function saveModelToSupabase(input: FinancialInput, results: Financ
             .single();
 
         if (error) {
-            console.error('Supabase Save Error:', error);
+            console.error('Supabase Save Error Details:', JSON.stringify(error, null, 2));
             throw error;
         }
 

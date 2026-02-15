@@ -3,10 +3,12 @@
 import { useState, useEffect } from "react";
 import { useFinancialStore } from "@/lib/store";
 import { format } from "date-fns";
-import { tr } from "date-fns/locale";
+import { tr, enUS } from "date-fns/locale";
 import { Calendar as CalendarIcon, Plus, Trash2, Edit2, Loader2, Save } from "lucide-react";
+import { useLanguage } from "@/lib/i18n-context";
 
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -40,6 +42,8 @@ export function TimelineEditor({ modelId }: { modelId: string }) {
     const [events, setEvents] = useState<TimelineEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [open, setOpen] = useState(false);
+    const { t, language } = useLanguage();
+    const dateLocale = language === 'tr' ? tr : enUS;
 
     // New Event Form State
     const [newEvent, setNewEvent] = useState({
@@ -59,7 +63,18 @@ export function TimelineEditor({ modelId }: { modelId: string }) {
     async function fetchEvents() {
         setLoading(true);
         try {
-            const res = await fetch(`/api/model/${modelId}/events`);
+            const { data: { session }, error } = await supabase!.auth.getSession();
+            if (error || !session) {
+                console.warn("No session found for timeline fetch");
+                setLoading(false);
+                return;
+            }
+
+            const res = await fetch(`/api/model/${modelId}/events`, {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`
+                }
+            });
             const data = await res.json();
             if (data.success) {
                 setEvents(data.events);
@@ -71,8 +86,23 @@ export function TimelineEditor({ modelId }: { modelId: string }) {
         }
     }
 
+    console.log("TimelineEditor Rendered with modelId:", modelId, typeof modelId);
+
     async function handleSaveEvent() {
+        console.log("Saving event for modelId:", modelId);
+        if (!modelId || modelId === 'undefined') {
+            alert("Model kimliği bulunamadı. Lütfen sayfayı yenileyin.");
+            return;
+        }
+
         try {
+            const { data: { session }, error } = await supabase!.auth.getSession();
+
+            if (error || !session) {
+                alert("İşlem için oturum açmanız gerekiyor. Lütfen sayfayı yenileyip tekrar giriş yapın.");
+                return;
+            }
+
             const payload = {
                 amount: newEvent.amount,
                 description: newEvent.description
@@ -80,7 +110,10 @@ export function TimelineEditor({ modelId }: { modelId: string }) {
 
             const res = await fetch(`/api/model/${modelId}/events`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
+                },
                 body: JSON.stringify({
                     event_type: newEvent.event_type,
                     event_name: newEvent.event_name,
@@ -100,17 +133,37 @@ export function TimelineEditor({ modelId }: { modelId: string }) {
                     amount: 0,
                     description: ''
                 });
+                alert("Olay başarıyla eklendi! / Event saved successfully!");
+            } else {
+                console.error('Server Error:', data.error);
+                if (data.error === "User not found") {
+                    alert("Kullanıcı oturumu bulunamadı. Lütfen tekrar giriş yapın.");
+                } else {
+                    alert(`Hata/Error: ${data.error || 'Bilinmeyen hata'}`);
+                }
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error saving event:', error);
+            alert(`Beklenmeyen Hata: ${error.message || 'Bağlantı hatası'}`);
         }
     }
 
     async function handleDeleteEvent(id: string) {
-        if (!confirm('Are you sure you want to delete this event?')) return;
+        if (!confirm(t('dashboard.timeline.confirm_delete'))) return;
 
         try {
-            await fetch(`/api/model/${modelId}/events/${id}`, { method: 'DELETE' });
+            const { data: { session }, error } = await supabase!.auth.getSession();
+            if (error || !session) {
+                alert("Oturum süreniz dolmuş olabilir. Lütfen sayfayı yenileyin.");
+                return;
+            }
+
+            await fetch(`/api/model/${modelId}/events/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`
+                }
+            });
             fetchEvents();
         } catch (error) {
             console.error('Error deleting event:', error);
@@ -122,25 +175,28 @@ export function TimelineEditor({ modelId }: { modelId: string }) {
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Timeline Events</h3>
+                <div>
+                    <h3 className="text-lg font-semibold">{t('dashboard.timeline.title')}</h3>
+                    <p className="text-xs text-muted-foreground">Model ID: {modelId || 'YOK'}</p>
+                </div>
                 <Dialog open={open} onOpenChange={setOpen}>
                     <DialogTrigger asChild>
                         <Button size="sm" className="gap-2">
                             <Plus className="w-4 h-4" />
-                            Add Event
+                            {t('dashboard.timeline.add_event')}
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Add New Event</DialogTitle>
+                            <DialogTitle>{t('dashboard.timeline.new_event')}</DialogTitle>
                             <DialogDescription>
-                                Add a significant event that impacts your financial model.
+                                {t('dashboard.timeline.event_desc')}
                             </DialogDescription>
                         </DialogHeader>
 
                         <div className="grid gap-4 py-4">
                             <div className="grid grid-cols-4 items-center gap-4">
-                                <Label className="text-right">Type</Label>
+                                <Label className="text-right">{t('dashboard.timeline.type')}</Label>
                                 <Select
                                     value={newEvent.event_type}
                                     onValueChange={(val: any) => setNewEvent({ ...newEvent, event_type: val })}
@@ -149,17 +205,17 @@ export function TimelineEditor({ modelId }: { modelId: string }) {
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="hire">Hire Employee</SelectItem>
-                                        <SelectItem value="salary_change">Salary Change</SelectItem>
-                                        <SelectItem value="price_change">Price Change</SelectItem>
-                                        <SelectItem value="one_time_cost">One-time Cost</SelectItem>
-                                        <SelectItem value="product_launch">Product Launch</SelectItem>
+                                        <SelectItem value="hire">{t('dashboard.timeline.types.hire')}</SelectItem>
+                                        <SelectItem value="salary_change">{t('dashboard.timeline.types.salary_change')}</SelectItem>
+                                        <SelectItem value="price_change">{t('dashboard.timeline.types.price_change')}</SelectItem>
+                                        <SelectItem value="one_time_cost">{t('dashboard.timeline.types.one_time_cost')}</SelectItem>
+                                        <SelectItem value="product_launch">{t('dashboard.timeline.types.product_launch')}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="grid grid-cols-4 items-center gap-4">
-                                <Label className="text-right">Name</Label>
+                                <Label className="text-right">{t('dashboard.timeline.name')}</Label>
                                 <Input
                                     value={newEvent.event_name}
                                     onChange={(e) => setNewEvent({ ...newEvent, event_name: e.target.value })}
@@ -169,7 +225,7 @@ export function TimelineEditor({ modelId }: { modelId: string }) {
                             </div>
 
                             <div className="grid grid-cols-4 items-center gap-4">
-                                <Label className="text-right">Date</Label>
+                                <Label className="text-right">{t('dashboard.timeline.date')}</Label>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <Button
@@ -180,7 +236,7 @@ export function TimelineEditor({ modelId }: { modelId: string }) {
                                             )}
                                         >
                                             <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {newEvent.effective_date ? format(newEvent.effective_date, "PPP") : <span>Pick a date</span>}
+                                            {newEvent.effective_date ? format(newEvent.effective_date, "PPP", { locale: dateLocale }) : <span>Pick a date</span>}
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0">
@@ -189,24 +245,28 @@ export function TimelineEditor({ modelId }: { modelId: string }) {
                                             selected={newEvent.effective_date}
                                             onSelect={(date) => date && setNewEvent({ ...newEvent, effective_date: date })}
                                             initialFocus
+                                            locale={dateLocale}
                                         />
                                     </PopoverContent>
                                 </Popover>
                             </div>
 
                             <div className="grid grid-cols-4 items-center gap-4">
-                                <Label className="text-right">Amount</Label>
+                                <Label className="text-right">{t('dashboard.timeline.amount')}</Label>
                                 <Input
                                     type="number"
-                                    value={newEvent.amount}
-                                    onChange={(e) => setNewEvent({ ...newEvent, amount: parseFloat(e.target.value) })}
+                                    value={newEvent.amount || ''}
+                                    onChange={(e) => {
+                                        const val = parseFloat(e.target.value);
+                                        setNewEvent({ ...newEvent, amount: isNaN(val) ? 0 : val });
+                                    }}
                                     className="col-span-3"
                                     placeholder="Impact amount"
                                 />
                             </div>
 
                             <div className="grid grid-cols-4 items-center gap-4">
-                                <Label className="text-right">Notes</Label>
+                                <Label className="text-right">{t('dashboard.timeline.notes')}</Label>
                                 <Textarea
                                     value={newEvent.description}
                                     onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
@@ -216,7 +276,7 @@ export function TimelineEditor({ modelId }: { modelId: string }) {
                         </div>
 
                         <DialogFooter>
-                            <Button onClick={handleSaveEvent}>Save Event</Button>
+                            <Button onClick={handleSaveEvent}>{t('dashboard.timeline.save')}</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
@@ -230,7 +290,7 @@ export function TimelineEditor({ modelId }: { modelId: string }) {
                 <div className="space-y-2">
                     {events.length === 0 && (
                         <div className="text-center p-8 border border-dashed rounded-lg text-muted-foreground">
-                            No events found. Add events to see impact on your model.
+                            {t('dashboard.timeline.no_events')}
                         </div>
                     )}
                     {events.map((event) => (
@@ -246,7 +306,7 @@ export function TimelineEditor({ modelId }: { modelId: string }) {
                                 <div>
                                     <p className="font-medium">{event.event_name}</p>
                                     <p className="text-xs text-muted-foreground">
-                                        {format(new Date(event.effective_date), 'PPP')} • {event.event_type.replace('_', ' ')}
+                                        {format(new Date(event.effective_date), 'PPP', { locale: dateLocale })} • {t(`dashboard.timeline.types.${event.event_type}`)}
                                     </p>
                                 </div>
                             </div>

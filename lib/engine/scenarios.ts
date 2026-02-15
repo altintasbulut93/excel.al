@@ -47,7 +47,8 @@ export function generateScenarioModel(
             ...baseInput.growth,
             monthlyGrowthRate: scenario.growthRate,
             churnRate: scenario.churnRate
-        }
+        },
+        scenarios: [] // Prevent infinite recursion
     };
 
     // Generate model

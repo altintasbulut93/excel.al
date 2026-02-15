@@ -18,6 +18,7 @@ import { generateAllScenarios, calculateScenarioAnalysis } from './scenarios';
  * ============================================
  */
 
+
 /**
  * Get default financial parameters
  */
@@ -25,23 +26,38 @@ function getDefaultParameters(): FinancialParameters {
     return {
         usdRate: 34.50,           // Dolar kuru (TRY)
         eurRate: 37.20,           // Euro kuru (TRY)
+        gbpRate: 44.10,           // Sterlin kuru (TRY)
         inflationRate: 0.40,      // %40 yıllık enflasyon
         salaryIncreaseRate: 0.25, // %25 yıllık maaş artışı
-        taxRate: 0.25             // %25 kurumlar vergisi
+        taxRate: 0.25,            // %25 kurumlar vergisi
+        kdvRate: 0.20,            // %20 KDV
+        stopajRate: 0.20,         // %20 Stopaj
+        sgkRate: 0.20             // %20 SGK (Teşvikli varsayım)
     };
 }
 
 /**
  * Apply currency conversion based on parameters
+ * Normalizes all values to a common base (TRY) or converts to target
  */
-function convertCurrency(
+function convertToCurrency(
     amount: number,
-    currency: 'TRY' | 'USD' | 'EUR',
+    from: string,
+    to: string,
     parameters: FinancialParameters
 ): number {
-    if (currency === 'USD') return amount * parameters.usdRate;
-    if (currency === 'EUR') return amount * parameters.eurRate;
-    return amount; // TRY
+    // 1. Convert any amount to TRY first
+    let amountInTry = amount;
+    if (from === 'USD') amountInTry = amount * parameters.usdRate;
+    else if (from === 'EUR') amountInTry = amount * parameters.eurRate;
+    else if (from === 'GBP') amountInTry = amount * parameters.gbpRate;
+
+    // 2. Convert from TRY to Target
+    if (to === 'USD') return amountInTry / parameters.usdRate;
+    if (to === 'EUR') return amountInTry / parameters.eurRate;
+    if (to === 'GBP') return amountInTry / parameters.gbpRate;
+
+    return amountInTry; // to TRY
 }
 
 /**
@@ -52,37 +68,24 @@ function applyInflation(
     month: number,
     parameters: FinancialParameters
 ): number {
-    // Aylık enflasyon = (1 + yıllık)^(1/12) - 1
     const monthlyInflation = Math.pow(1 + parameters.inflationRate, 1 / 12) - 1;
     return amount * Math.pow(1 + monthlyInflation, month - 1);
 }
 
 /**
- * Separate fixed and variable expenses
- */
-function categorizeExpenses(input: FinancialInput) {
-    const fixed = input.fixedExpenses.filter(e => !e.isVariable);
-    const variable = input.fixedExpenses.filter(e => e.isVariable);
-    return { fixed, variable };
-}
-
-/**
  * MAIN FINANCIAL MODEL GENERATOR
- * Enhanced with: Churn, Parameters, Unit Economics, Cost Structure
  */
 export function generateFinancialModel(input: FinancialInput): FinancialModelResult {
     const monthlyResults: MonthlyFinancialResult[] = [];
     const redFlags: string[] = [];
 
-    // Parameters
     const parameters = input.parameters || getDefaultParameters();
+    const targetCurrency = input.pricing.currency;
 
-    // Initial state
-    let currentCashBalance = input.startingCapital || 0;
+    let currentCashBalance = convertToCurrency(input.startingCapital || 0, 'TRY', targetCurrency, parameters);
     let currentCustomers = input.growth.initialCustomers;
-    const churnRate = input.growth.churnRate || 0.05; // Default 5% monthly churn
+    const churnRate = input.growth.churnRate || 0.05;
 
-    // COGS Rate (Sector-based)
     let cogsRate = input.cogsRate;
     if (cogsRate === undefined) {
         if (input.sector.toLowerCase().includes('saas')) {
@@ -94,168 +97,191 @@ export function generateFinancialModel(input: FinancialInput): FinancialModelRes
         }
     }
 
-    // Projection period
     const projectionMonths = input.projectionMonths || 12;
 
-    // Categorize expenses
-    const { fixed: fixedExpenses, variable: variableExpenses } = categorizeExpenses(input);
+    const revenueStreams: import('./types').RevenueItem[] = input.revenueItems && input.revenueItems.length > 0
+        ? input.revenueItems
+        : [{
+            id: 'default',
+            name: 'Ana Gelir',
+            type: input.revenueModel as any,
+            price: input.pricing.amount,
+            currency: input.pricing.currency,
+            initialCustomers: input.growth.initialCustomers,
+            monthlyGrowthRate: input.growth.monthlyGrowthRate,
+            churnRate: input.growth.churnRate || 0.05
+        }];
 
-    // Tracking for unit economics
+    const streamStates = revenueStreams.map(s => ({
+        ...s,
+        currentCount: s.initialCustomers,
+        isOneTime: s.type === 'one_time' || s.type === 'service'
+    }));
+
     let totalMarketingSpend = 0;
     let totalNewCustomers = 0;
     let totalRevenue = 0;
     let totalActiveCustomers = 0;
 
-    // ============================================
-    // MONTHLY LOOP
-    // ============================================
     for (let month = 1; month <= projectionMonths; month++) {
-        // ----------------------------------------
-        // 1. CUSTOMER DYNAMICS (with Churn)
-        // ----------------------------------------
-        let newCustomers = 0;
-        let churnedCustomers = 0;
+        let monthNewCustomers = 0;
+        let monthChurnedCustomers = 0;
+        let monthActiveCustomers = 0;
+        let monthRevenue = 0;
+        let monthCogs = 0;
+        let monthShipping = 0;
 
-        if (month > 1) {
-            // New customers from growth
-            newCustomers = currentCustomers * input.growth.monthlyGrowthRate;
+        streamStates.forEach(stream => {
+            let newCust = 0;
+            let churnedCust = 0;
+            const price = convertToCurrency(stream.price, stream.currency, targetCurrency, parameters);
 
-            // Churned customers
-            churnedCustomers = currentCustomers * churnRate;
-
-            // Net change
-            currentCustomers = currentCustomers + newCustomers - churnedCustomers;
-        } else {
-            // First month: all customers are "new"
-            newCustomers = currentCustomers;
-        }
-
-        const activeCustomers = Math.floor(currentCustomers);
-
-        // ----------------------------------------
-        // 2. REVENUE CALCULATION
-        // ----------------------------------------
-        const priceInTRY = convertCurrency(
-            input.pricing.amount,
-            input.pricing.currency,
-            parameters
-        );
-
-        const monthlyRevenue = activeCustomers * priceInTRY;
-
-        // ----------------------------------------
-        // 3. COST OF GOODS SOLD (COGS)
-        // ----------------------------------------
-        const cogs = monthlyRevenue * cogsRate;
-        const grossProfit = monthlyRevenue - cogs;
-        const grossMargin = monthlyRevenue > 0 ? grossProfit / monthlyRevenue : 0;
-
-        // ----------------------------------------
-        // 4. OPERATING EXPENSES
-        // ----------------------------------------
-
-        // a) Personnel (with inflation and salary increase)
-        let personnelExpense = 0;
-        input.team.forEach(member => {
-            let grossSalary = member.salary;
-
-            // Convert to gross if net
-            if (member.isNetSalary) {
-                grossSalary = member.salary * 1.45;
+            if (month > 1) {
+                if (stream.isOneTime) {
+                    const previousSales = stream.currentCount;
+                    stream.currentCount = previousSales * (1 + stream.monthlyGrowthRate);
+                    newCust = stream.currentCount;
+                } else {
+                    newCust = stream.currentCount * stream.monthlyGrowthRate;
+                    churnedCust = stream.currentCount * (stream.churnRate || 0.05);
+                    stream.currentCount = stream.currentCount + newCust - churnedCust;
+                }
+            } else {
+                newCust = stream.currentCount;
             }
 
-            // Apply salary increase (yearly, so every 12 months)
-            if (month > 12) {
-                const years = Math.floor((month - 1) / 12);
-                grossSalary *= Math.pow(1 + parameters.salaryIncreaseRate, years);
+            const effectiveCount = Math.floor(stream.currentCount);
+            const effectiveNew = Math.floor(newCust);
+            const effectiveChurn = Math.floor(churnedCust);
+
+            let streamRevenue = 0;
+            let streamUnits = 0;
+
+            if (stream.isOneTime) {
+                streamRevenue = effectiveNew * price;
+                streamUnits = effectiveNew;
+                monthActiveCustomers += effectiveNew;
+            } else {
+                streamRevenue = effectiveCount * price;
+                streamUnits = effectiveCount; // Recurring units (e.g. active subs) - though shipping usually only on new?
+                // For SaaS, shipping is 0. For subscription box, shipping is on all active.
+                // We'll assume shippingCost applies to ALL active units for subscription types if set.
+                monthActiveCustomers += effectiveCount;
             }
 
-            // Apply inflation
-            grossSalary = applyInflation(grossSalary, month, parameters);
+            monthRevenue += streamRevenue;
+            monthNewCustomers += effectiveNew;
+            monthChurnedCustomers += effectiveChurn;
 
-            const cost = calculateEmployerCost(grossSalary);
-            personnelExpense += cost * member.count;
+            // COST CALCULATIONS (Per Item)
+            // 1. COGS (Cost of Goods Sold)
+            const itemCogsRate = stream.cogsPercentage !== undefined ? stream.cogsPercentage : cogsRate;
+            monthCogs += streamRevenue * itemCogsRate;
+
+            // 2. Returns (Refunds)
+            const itemReturnRate = stream.returnRate || 0;
+            const refundAmount = streamRevenue * itemReturnRate;
+            monthRevenue -= refundAmount; // Reduces Net Revenue
+            // (Note: COGS should technically be reduced by returns too, but keeping simple for now or treating as write-off)
+
+            // 3. Shipping (Variable Cost)
+            // If one_time, valid for new units. If subscription, valid for all active units (box model)
+            const unitsToShip = stream.type === 'subscription' ? effectiveCount : effectiveNew;
+            monthShipping += unitsToShip * (stream.shippingCost || 0);
         });
 
-        // b) Marketing
+        // Aggregated Costs
+        const cogs = monthCogs;
+        const variableCosts = monthShipping; // Shipping is variable
+        const grossProfit = monthRevenue - cogs - variableCosts;
+        const grossMargin = monthRevenue > 0 ? grossProfit / monthRevenue : 0;
+
+        // Personnel
+        let personnelExpense = 0;
+        input.team.forEach(member => {
+            const startMonth = member.startMonth || 1;
+
+            // Future Hire Logic
+            if (month < startMonth) {
+                return; // Skip cost for this month
+            }
+            // For salary increases, calculate years relative to START date or Model Start?
+            // Usually relative to Model Start (inflation hits everyone).
+
+            let salaryInTarget = convertToCurrency(member.salary, 'TRY', targetCurrency, parameters);
+
+            if (member.isNetSalary) {
+                // Brütleştirme: Net / (1 - (SGK + Gelir Vergisi vs)) ~ 1.45 katsayı basitleştirilmiş
+                // Localization: Use SGK rate if available
+                const burden = parameters.sgkRate ? (1 + parameters.sgkRate) : 1.45;
+                salaryInTarget = salaryInTarget * burden;
+            }
+
+            if (month > 12) {
+                const years = Math.floor((month - 1) / 12);
+                salaryInTarget *= Math.pow(1 + parameters.salaryIncreaseRate, years);
+            }
+
+            salaryInTarget = applyInflation(salaryInTarget, month, parameters);
+            personnelExpense += salaryInTarget * member.count;
+        });
+
+        // Marketing
         let marketingExpense = 0;
         if (input.marketing.type === 'percentage') {
-            marketingExpense = monthlyRevenue * input.marketing.value;
+            marketingExpense = monthRevenue * input.marketing.value;
         } else {
-            marketingExpense = convertCurrency(
-                input.marketing.value,
-                'TRY',
-                parameters
-            );
+            marketingExpense = convertToCurrency(input.marketing.value, 'TRY', targetCurrency, parameters);
             marketingExpense = applyInflation(marketingExpense, month, parameters);
         }
 
-        // c) Fixed Expenses (Sabit Giderler)
+        // Fixed & Variable
         let fixedExpenseTotal = 0;
-        fixedExpenses.forEach(exp => {
-            let amount = convertCurrency(exp.amount, exp.currency, parameters);
+        input.fixedExpenses.filter(e => !e.isVariable).forEach(exp => {
+            let amount = convertToCurrency(exp.amount, exp.currency || 'TRY', targetCurrency, parameters);
+
+            // Localization: Stopaj on Rent (Kira)
+            if (parameters.stopajRate && (exp.name.toLowerCase().includes('kira') || exp.name.toLowerCase().includes('rent'))) {
+                // Kira bedeli net ise, stopaj ekle (Net / (1 - Stopaj) - Net) değil, direkt brüt hesap veya ek maliyet
+                // Basit kural: Kira 10.000 TL ise, devlete +2.500 TL ödenir (Brütleşirse). 
+                // Burada basitçe maliyeti artırıyoruz.
+                amount = amount * (1 + parameters.stopajRate);
+            }
+
             amount = applyInflation(amount, month, parameters);
             fixedExpenseTotal += amount;
         });
 
-        // d) Variable Expenses (Değişken Giderler)
         let variableExpenseTotal = 0;
-        variableExpenses.forEach(exp => {
-            let amount = convertCurrency(exp.amount, exp.currency, parameters);
-            // Variable expenses scale with revenue
-            amount = (amount / 100) * monthlyRevenue; // Assume percentage
+        input.fixedExpenses.filter(e => e.isVariable).forEach(exp => {
+            let amount = convertToCurrency(exp.amount, exp.currency || 'TRY', targetCurrency, parameters);
+            // Variable scaler logic (assume input amount is percentage if isVariable true?)
+            // Actually usually it's % of revenue. Let's stick to % of revenue if isVariable is true.
+            amount = (amount / 100) * monthRevenue;
             variableExpenseTotal += amount;
         });
 
         const totalOperatingExpenses = personnelExpense + marketingExpense + fixedExpenseTotal + variableExpenseTotal;
-
-        // ----------------------------------------
-        // 5. PROFITABILITY
-        // ----------------------------------------
         const ebitda = grossProfit - totalOperatingExpenses;
-
-        // Tax (using parameter tax rate)
         const tax = ebitda > 0 ? ebitda * parameters.taxRate : 0;
         const netIncome = ebitda - tax;
 
-        // ----------------------------------------
-        // 6. CASH FLOW
-        // ----------------------------------------
-        const monthlyNetCashFlow = netIncome;
         const beginningCash = currentCashBalance;
-        currentCashBalance += monthlyNetCashFlow;
+        currentCashBalance += netIncome;
 
-        // ----------------------------------------
-        // 7. UNIT ECONOMICS (per month)
-        // ----------------------------------------
-        const monthlyCac = newCustomers > 0 ? marketingExpense / newCustomers : 0;
-        const monthlyArpu = activeCustomers > 0 ? monthlyRevenue / activeCustomers : 0;
-        const monthlyLtv = churnRate > 0 ? (monthlyArpu * grossMargin) / churnRate : monthlyArpu * 12;
-        const monthlyLtvCacRatio = monthlyCac > 0 ? monthlyLtv / monthlyCac : 0;
-
-        // Tracking for overall unit economics
         totalMarketingSpend += marketingExpense;
-        totalNewCustomers += newCustomers;
-        totalRevenue += monthlyRevenue;
-        totalActiveCustomers += activeCustomers;
+        totalNewCustomers += monthNewCustomers;
+        totalRevenue += monthRevenue;
+        totalActiveCustomers += monthActiveCustomers;
 
-        // ----------------------------------------
-        // 8. STORE MONTHLY RESULT
-        // ----------------------------------------
         monthlyResults.push({
             month,
-
-            // Revenue
-            revenue: monthlyRevenue,
-            customers: activeCustomers,
-            newCustomers: Math.floor(newCustomers),
-            churnedCustomers: Math.floor(churnedCustomers),
-
-            // Costs
+            revenue: monthRevenue,
+            customers: monthActiveCustomers,
+            newCustomers: Math.floor(monthNewCustomers),
+            churnedCustomers: Math.floor(monthChurnedCustomers),
             cogs,
             grossProfit,
-
-            // Expenses (with breakdown)
             expenses: {
                 personnel: personnelExpense,
                 marketing: marketingExpense,
@@ -264,50 +290,33 @@ export function generateFinancialModel(input: FinancialInput): FinancialModelRes
                 other: 0
             },
             totalExpenses: totalOperatingExpenses + cogs,
-
-            // Profitability
             ebitda,
             netIncome,
-
-            // Cash Flow
             cashFlow: {
-                inflow: monthlyRevenue,
+                inflow: monthRevenue,
                 outflow: totalOperatingExpenses + cogs + tax,
-                net: monthlyNetCashFlow,
+                net: netIncome,
                 beginningBalance: beginningCash,
                 endingBalance: currentCashBalance
             },
-
-            // Metrics
             metrics: {
-                burnRate: monthlyNetCashFlow < 0 ? -monthlyNetCashFlow : 0,
-                runway: monthlyNetCashFlow < 0 ? (beginningCash / -monthlyNetCashFlow) : 99,
+                burnRate: netIncome < 0 ? -netIncome : 0,
+                runway: netIncome < 0 ? (beginningCash / -netIncome) : 99,
                 grossMargin,
-
-                // Unit Economics
-                cac: monthlyCac,
-                arpu: monthlyArpu,
-                ltv: monthlyLtv,
-                ltvCacRatio: monthlyLtvCacRatio
+                cac: monthNewCustomers > 0 ? marketingExpense / monthNewCustomers : 0,
+                arpu: monthActiveCustomers > 0 ? monthRevenue / monthActiveCustomers : 0,
+                ltv: churnRate > 0 ? ((monthRevenue / monthActiveCustomers) * grossMargin) / churnRate : 12 * (monthRevenue / monthActiveCustomers),
+                ltvCacRatio: (monthNewCustomers > 0 && marketingExpense > 0) ? (((monthRevenue / monthActiveCustomers) * grossMargin) / churnRate) / (marketingExpense / monthNewCustomers) : 0
             }
         });
     }
 
-    // ============================================
-    // SUMMARY CALCULATIONS
-    // ============================================
     const summaryTotalRevenue = monthlyResults.reduce((sum, m) => sum + m.revenue, 0);
     const summaryTotalProfit = monthlyResults.reduce((sum, m) => sum + m.netIncome, 0);
-
-    // Breakeven
-    const breakevenMonthObj = monthlyResults.find(m => m.netIncome > 0);
-    const breakevenMonth = breakevenMonthObj ? breakevenMonthObj.month : null;
-
-    // Needed Capital
+    const breakevenMonth = monthlyResults.find(m => m.netIncome > 0)?.month || null;
     const minCash = Math.min(...monthlyResults.map(m => m.cashFlow.endingBalance));
     const neededCapital = minCash < 0 ? Math.abs(minCash) : 0;
 
-    // Payback Period (when cumulative profit > 0)
     let cumulativeProfit = 0;
     let paybackMonth = null;
     for (const m of monthlyResults) {
@@ -318,9 +327,6 @@ export function generateFinancialModel(input: FinancialInput): FinancialModelRes
         }
     }
 
-    // ============================================
-    // UNIT ECONOMICS (Overall)
-    // ============================================
     const avgActiveCustomers = totalActiveCustomers / monthlyResults.length;
     const overallUnitEconomics: UnitEconomics | undefined = input.enableUnitEconomics !== false
         ? calculateUnitEconomics(
@@ -333,9 +339,6 @@ export function generateFinancialModel(input: FinancialInput): FinancialModelRes
         )
         : undefined;
 
-    // ============================================
-    // COST STRUCTURE
-    // ============================================
     const totalFixedCosts = monthlyResults.reduce((sum, m) => sum + m.expenses.fixed + m.expenses.personnel, 0);
     const totalVariableCosts = monthlyResults.reduce((sum, m) => sum + m.expenses.variable + m.cogs, 0);
     const totalCosts = totalFixedCosts + totalVariableCosts;
@@ -347,39 +350,31 @@ export function generateFinancialModel(input: FinancialInput): FinancialModelRes
         variablePercentage: totalCosts > 0 ? (totalVariableCosts / totalCosts) * 100 : 0
     };
 
-    // ============================================
-    // RED FLAGS
-    // ============================================
-    if (neededCapital > 0 && input.startingCapital < neededCapital) {
-        redFlags.push(`⚠️ Nakit yetersiz! En düşük bakiye: ${Math.floor(minCash)} TL. Ek sermaye: ${Math.floor(neededCapital)} TL gerekli.`);
+    // Red Flags
+    if (neededCapital > 0 && convertToCurrency(input.startingCapital || 0, 'TRY', targetCurrency, parameters) < neededCapital) {
+        redFlags.push("dashboard.red_flags.low_cash");
     }
 
     if (overallUnitEconomics && overallUnitEconomics.ltvCacRatio < 3) {
-        redFlags.push(`⚠️ LTV/CAC oranı düşük (${overallUnitEconomics.ltvCacRatio.toFixed(1)}). Sağlıklı bir SaaS için >3 olmalı.`);
+        redFlags.push("dashboard.red_flags.low_ltv_cac");
     }
 
     if (churnRate > 0.07) {
-        redFlags.push(`⚠️ Churn rate yüksek (%${(churnRate * 100).toFixed(1)}). Müşteri tutma stratejileri geliştirin.`);
+        redFlags.push("dashboard.red_flags.high_churn");
     }
 
     if (costStructure.fixedPercentage > 70) {
-        redFlags.push(`⚠️ Sabit giderler çok yüksek (%${costStructure.fixedPercentage.toFixed(0)}). Ölçeklenebilirlik riski.`);
+        redFlags.push("dashboard.red_flags.high_fixed_costs");
     }
 
-    // ============================================
-    // SCENARIOS (if enabled)
-    // ============================================
-    let scenarios = undefined;
-    let scenarioAnalysis = undefined;
+    const healthScore = calculateStartupHealthScore(
+        summaryTotalProfit,
+        monthlyResults[monthlyResults.length - 1].metrics.runway,
+        input.growth.monthlyGrowthRate,
+        overallUnitEconomics?.ltvCacRatio || 0,
+        churnRate
+    );
 
-    if (input.scenarios && input.scenarios.length > 0) {
-        scenarios = generateAllScenarios(input, input.scenarios);
-        scenarioAnalysis = calculateScenarioAnalysis(scenarios);
-    }
-
-    // ============================================
-    // RETURN RESULT
-    // ============================================
     return {
         monthly: monthlyResults,
         summary: {
@@ -392,7 +387,58 @@ export function generateFinancialModel(input: FinancialInput): FinancialModelRes
             costStructure
         },
         redFlags,
-        scenarios,
-        scenarioAnalysis
+        healthScore,
+        averageProfit: summaryTotalProfit / projectionMonths,
+        riskScore: (neededCapital > 0) ? 70 : 10
     };
+}
+
+function calculateStartupHealthScore(
+    totalProfit: number,
+    runway: number,
+    growthRate: number,
+    ltvCac: number,
+    churnRate: number
+): import('./types').StartupHealthScore {
+    let score = 0;
+    const details = { profitability: 0, runway: 0, growth: 0, unitEconomics: 0, churn: 0 };
+    const feedback: string[] = [];
+
+    if (totalProfit > 0) { details.profitability = 20; feedback.push("dashboard.health_feedback.profit_success"); }
+    else if (totalProfit > -5000) { details.profitability = 10; feedback.push("dashboard.health_feedback.profit_near"); }
+    else { details.profitability = 0; feedback.push("dashboard.health_feedback.profit_fail"); }
+    score += details.profitability;
+
+    if (runway > 12 || runway > 90) { details.runway = 20; feedback.push("dashboard.health_feedback.runway_success"); }
+    else if (runway > 6) { details.runway = 10; feedback.push("dashboard.health_feedback.runway_near"); }
+    else { details.runway = 0; feedback.push("dashboard.health_feedback.runway_fail"); }
+    score += details.runway;
+
+    if (growthRate >= 0.15) { details.growth = 20; feedback.push("dashboard.health_feedback.growth_success"); }
+    else if (growthRate >= 0.05) { details.growth = 10; feedback.push("dashboard.health_feedback.growth_near"); }
+    else { details.growth = 5; feedback.push("dashboard.health_feedback.growth_fail"); }
+    score += details.growth;
+
+    if (ltvCac >= 3) { details.unitEconomics = 20; feedback.push("dashboard.health_feedback.unit_success"); }
+    else if (ltvCac >= 1) { details.unitEconomics = 10; feedback.push("dashboard.health_feedback.unit_near"); }
+    else { details.unitEconomics = 0; feedback.push("dashboard.health_feedback.unit_fail"); }
+    score += details.unitEconomics;
+
+    if (churnRate <= 0.03) { details.churn = 20; }
+    else if (churnRate <= 0.07) { details.churn = 10; }
+    else { details.churn = 0; feedback.push("dashboard.health_feedback.churn_fail"); }
+    score += details.churn;
+
+    let grade: 'A+' | 'A' | 'B' | 'C' | 'D' | 'F' = 'F';
+    if (score >= 90) grade = 'A+';
+    else if (score >= 80) grade = 'A';
+    else if (score >= 60) grade = 'B';
+    else if (score >= 40) grade = 'C';
+    else if (score >= 20) grade = 'D';
+
+    return { score, grade, details, feedback };
+}
+
+function formatCurrency(val: number, currency: string) {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(val);
 }

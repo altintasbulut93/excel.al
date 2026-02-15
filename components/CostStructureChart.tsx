@@ -2,9 +2,10 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency } from "@/lib/utils";
+import { useFormat } from "@/hooks/use-format";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { Layers, TrendingUp, AlertCircle, CheckCircle } from "lucide-react";
+import { useLanguage } from "@/lib/i18n-context";
 
 interface CostStructureChartProps {
     costStructure: {
@@ -18,11 +19,13 @@ interface CostStructureChartProps {
 export function CostStructureChart({ costStructure }: CostStructureChartProps) {
     const { totalFixed, totalVariable, fixedPercentage, variablePercentage } = costStructure;
     const totalCosts = totalFixed + totalVariable;
+    const { t } = useLanguage();
+    const { format } = useFormat();
 
     // Chart data
     const chartData = [
-        { name: 'Sabit Giderler', value: totalFixed, percentage: fixedPercentage },
-        { name: 'Değişken Giderler', value: totalVariable, percentage: variablePercentage }
+        { name: t('dashboard.expense_analysis.fixed_expenses'), value: totalFixed, percentage: fixedPercentage },
+        { name: t('dashboard.expense_analysis.variable_expenses'), value: totalVariable, percentage: variablePercentage }
     ];
 
     const COLORS = {
@@ -40,21 +43,21 @@ export function CostStructureChart({ costStructure }: CostStructureChartProps) {
                     <div>
                         <CardTitle className="text-xl font-bold flex items-center gap-2">
                             <Layers className="w-5 h-5 text-amber-600" />
-                            Gider Yapısı Analizi
+                            {t('dashboard.expense_analysis.title')}
                         </CardTitle>
                         <CardDescription>
-                            Sabit ve değişken gider dağılımı
+                            {t('dashboard.expense_analysis.desc')}
                         </CardDescription>
                     </div>
                     {isHealthy ? (
                         <Badge className="bg-green-100 text-green-800 border-green-300">
                             <CheckCircle className="w-4 h-4 mr-1" />
-                            Ölçeklenebilir
+                            {t('dashboard.expense_analysis.scalable')}
                         </Badge>
                     ) : (
                         <Badge className="bg-orange-100 text-orange-800 border-orange-300">
                             <AlertCircle className="w-4 h-4 mr-1" />
-                            Yüksek Sabit Gider
+                            {t('dashboard.expense_analysis.high_fixed')}
                         </Badge>
                     )}
                 </div>
@@ -65,36 +68,36 @@ export function CostStructureChart({ costStructure }: CostStructureChartProps) {
                     {/* Total Costs */}
                     <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border">
                         <p className="text-xs font-medium text-muted-foreground uppercase mb-1">
-                            Toplam Gider
+                            {t('dashboard.expense_analysis.total_expense')}
                         </p>
                         <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                            {formatCurrency(totalCosts)}
+                            {format(totalCosts)}
                         </p>
                     </div>
 
                     {/* Fixed Costs */}
                     <div className="p-4 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
                         <p className="text-xs font-medium text-red-600 dark:text-red-400 uppercase mb-1">
-                            Sabit Giderler
+                            {t('dashboard.expense_analysis.fixed_expenses')}
                         </p>
                         <p className="text-2xl font-bold text-red-700 dark:text-red-300">
-                            {formatCurrency(totalFixed)}
+                            {format(totalFixed)}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                            %{fixedPercentage.toFixed(1)} oranında
+                            {t('dashboard.expense_analysis.fixed_percentage').replace('{percent}', fixedPercentage.toFixed(1))}
                         </p>
                     </div>
 
                     {/* Variable Costs */}
                     <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
                         <p className="text-xs font-medium text-green-600 dark:text-green-400 uppercase mb-1">
-                            Değişken Giderler
+                            {t('dashboard.expense_analysis.variable_expenses')}
                         </p>
                         <p className="text-2xl font-bold text-green-700 dark:text-green-300">
-                            {formatCurrency(totalVariable)}
+                            {format(totalVariable)}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                            %{variablePercentage.toFixed(1)} oranında
+                            {t('dashboard.expense_analysis.variable_percentage').replace('{percent}', variablePercentage.toFixed(1))}
                         </p>
                     </div>
                 </div>
@@ -108,7 +111,7 @@ export function CostStructureChart({ costStructure }: CostStructureChartProps) {
                                 cx="50%"
                                 cy="50%"
                                 labelLine={false}
-                                label={({ name, percentage }) => `${name}: %${percentage.toFixed(1)}`}
+                                label={({ name, percent }) => `${name}: %${((percent || 0) * 100).toFixed(1)}`}
                                 outerRadius={100}
                                 fill="#8884d8"
                                 dataKey="value"
@@ -124,10 +127,10 @@ export function CostStructureChart({ costStructure }: CostStructureChartProps) {
                                             <div className="bg-white dark:bg-slate-800 p-3 rounded-lg shadow-lg border">
                                                 <p className="font-semibold text-sm mb-1">{data.name}</p>
                                                 <p className="text-xs">
-                                                    <strong>Tutar:</strong> {formatCurrency(data.value)}
+                                                    <strong>{t('dashboard.expense_analysis.amount')}:</strong> {format(data.value)}
                                                 </p>
                                                 <p className="text-xs">
-                                                    <strong>Oran:</strong> %{data.percentage.toFixed(1)}
+                                                    <strong>{t('dashboard.expense_analysis.ratio')}:</strong> %{data.percentage.toFixed(1)}
                                                 </p>
                                             </div>
                                         );
@@ -146,24 +149,24 @@ export function CostStructureChart({ costStructure }: CostStructureChartProps) {
                     <div className="p-4 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
                         <h4 className="font-semibold text-red-900 dark:text-red-100 mb-3 flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                            Sabit Giderler
+                            {t('dashboard.expense_analysis.fixed_expenses_caps')}
                         </h4>
                         <ul className="space-y-2 text-sm text-red-800 dark:text-red-200">
                             <li className="flex items-start gap-2">
                                 <span className="text-red-500">•</span>
-                                <span><strong>Personel Maaşları:</strong> Satıştan bağımsız, her ay ödenen</span>
+                                <span><strong>{t('dashboard.expense_analysis.staff_salaries')}</strong> {t('dashboard.expense_analysis.staff_salaries_desc')}</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-red-500">•</span>
-                                <span><strong>Ofis Kirası:</strong> Sabit aylık kira</span>
+                                <span><strong>{t('dashboard.expense_analysis.office_rent')}</strong> {t('dashboard.expense_analysis.office_rent_desc')}</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-red-500">•</span>
-                                <span><strong>Yazılım Abonelikleri:</strong> SaaS araçlar</span>
+                                <span><strong>{t('dashboard.expense_analysis.software_subs')}</strong> {t('dashboard.expense_analysis.software_subs_desc')}</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-red-500">•</span>
-                                <span><strong>Sigorta & Muhasebe:</strong> Zorunlu giderler</span>
+                                <span><strong>{t('dashboard.expense_analysis.insurance_accounting')}</strong> {t('dashboard.expense_analysis.insurance_accounting_desc')}</span>
                             </li>
                         </ul>
                     </div>
@@ -172,24 +175,24 @@ export function CostStructureChart({ costStructure }: CostStructureChartProps) {
                     <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
                         <h4 className="font-semibold text-green-900 dark:text-green-100 mb-3 flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                            Değişken Giderler
+                            {t('dashboard.expense_analysis.variable_expenses_caps')}
                         </h4>
                         <ul className="space-y-2 text-sm text-green-800 dark:text-green-200">
                             <li className="flex items-start gap-2">
                                 <span className="text-green-500">•</span>
-                                <span><strong>COGS:</strong> Satılan ürünün maliyeti</span>
+                                <span><strong>{t('dashboard.expense_analysis.cogs')}</strong> {t('dashboard.expense_analysis.cogs_desc')}</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-green-500">•</span>
-                                <span><strong>Komisyonlar:</strong> Satış bazlı ödemeler</span>
+                                <span><strong>{t('dashboard.expense_analysis.commissions')}</strong> {t('dashboard.expense_analysis.commissions_desc')}</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-green-500">•</span>
-                                <span><strong>Pazarlama (Değişken):</strong> Performans bazlı reklamlar</span>
+                                <span><strong>{t('dashboard.expense_analysis.marketing_variable')}</strong> {t('dashboard.expense_analysis.marketing_variable_desc')}</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-green-500">•</span>
-                                <span><strong>Ödeme İşlem Ücretleri:</strong> Stripe, PayPal vb.</span>
+                                <span><strong>{t('dashboard.expense_analysis.payment_fees')}</strong> {t('dashboard.expense_analysis.payment_fees_desc')}</span>
                             </li>
                         </ul>
                     </div>
@@ -199,33 +202,30 @@ export function CostStructureChart({ costStructure }: CostStructureChartProps) {
                 <div className={`p-4 rounded-lg border ${isHealthy ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' : 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800'}`}>
                     <h4 className={`font-semibold mb-2 flex items-center gap-2 ${isHealthy ? 'text-green-900 dark:text-green-100' : 'text-orange-900 dark:text-orange-100'}`}>
                         {isHealthy ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                        Analiz & Öneriler
+                        {t('dashboard.expense_analysis.analysis_recommendations')}
                     </h4>
                     {isHealthy ? (
                         <div className="text-sm text-green-800 dark:text-green-200 space-y-2">
                             <p>
-                                ✅ <strong>Sağlıklı gider yapısı!</strong> Sabit giderleriniz %{fixedPercentage.toFixed(0)} seviyesinde,
-                                bu ölçeklenebilir bir yapı anlamına gelir.
+                                ✅ <strong>{t('dashboard.expense_analysis.healthy_structure')}</strong> {t('dashboard.expense_analysis.healthy_structure_desc').replace('{percent}', fixedPercentage.toFixed(0))}
                             </p>
                             <p>
-                                💡 Satışlarınız arttıkça değişken giderler de artacak ama sabit giderler aynı kalacağı için
-                                kâr marjınız yükselecek.
+                                💡 {t('dashboard.expense_analysis.margin_increase_desc')}
                             </p>
                         </div>
                     ) : (
                         <div className="text-sm text-orange-800 dark:text-orange-200 space-y-2">
                             <p>
-                                ⚠️ <strong>Dikkat!</strong> Sabit giderleriniz %{fixedPercentage.toFixed(0)} seviyesinde,
-                                bu ölçeklenebilirliği zorlaştırabilir.
+                                ⚠️ <strong>{t('dashboard.expense_analysis.unhealthy_structure')}</strong> {t('dashboard.expense_analysis.unhealthy_structure_desc').replace('{percent}', fixedPercentage.toFixed(0))}
                             </p>
                             <p>
-                                💡 <strong>Öneriler:</strong>
+                                💡 <strong>{t('dashboard.expense_analysis.rec_header')}</strong>
                             </p>
                             <ul className="list-disc list-inside space-y-1 ml-4">
-                                <li>Bazı sabit giderleri değişken hale getirin (örn: freelancer kullanımı)</li>
-                                <li>Ofis yerine remote çalışma modeli düşünün</li>
-                                <li>Satış bazlı komisyon sistemine geçin</li>
-                                <li>Bulut maliyetlerini kullanıma göre ölçeklendirin</li>
+                                <li>{t('dashboard.expense_analysis.rec1')}</li>
+                                <li>{t('dashboard.expense_analysis.rec2')}</li>
+                                <li>{t('dashboard.expense_analysis.rec3')}</li>
+                                <li>{t('dashboard.expense_analysis.rec4')}</li>
                             </ul>
                         </div>
                     )}

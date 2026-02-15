@@ -6,6 +6,9 @@ import { MonthlyFinancialResult } from "@/lib/engine/types";
 import { formatCurrency } from "@/lib/utils";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend } from 'recharts';
 import { TrendingDown, TrendingUp, AlertTriangle } from "lucide-react";
+import { useLanguage } from "@/lib/i18n-context";
+
+import { useFormat } from "@/hooks/use-format";
 
 interface DeathValleyChartProps {
     monthly: MonthlyFinancialResult[];
@@ -13,6 +16,9 @@ interface DeathValleyChartProps {
 }
 
 export function DeathValleyChart({ monthly, paybackPeriod }: DeathValleyChartProps) {
+    const { t } = useLanguage();
+    const { format } = useFormat();
+
     // Calculate cumulative profit
     let cumulativeProfit = 0;
     let cumulativeCash = monthly[0]?.cashFlow.beginningBalance || 0;
@@ -30,7 +36,7 @@ export function DeathValleyChart({ monthly, paybackPeriod }: DeathValleyChartPro
         }
 
         return {
-            month: `${m.month}. Ay`,
+            month: `${m.month}. ${t('common.month')}`,
             monthNumber: m.month,
             cumulativeProfit: Math.round(cumulativeProfit),
             cumulativeCash: Math.round(cumulativeCash),
@@ -48,21 +54,21 @@ export function DeathValleyChart({ monthly, paybackPeriod }: DeathValleyChartPro
                     <div>
                         <CardTitle className="text-xl font-bold flex items-center gap-2">
                             <TrendingDown className="w-5 h-5 text-purple-600" />
-                            Ölüm Vadisi Analizi
+                            {t('dashboard.death_title')}
                         </CardTitle>
                         <CardDescription>
-                            Kümülatif kâr/zarar ve nakit akışı trendi
+                            {t('dashboard.death_desc')}
                         </CardDescription>
                     </div>
                     {isInDeathValley ? (
                         <Badge className="bg-orange-100 text-orange-800 border-orange-300">
                             <AlertTriangle className="w-4 h-4 mr-1" />
-                            Ölüm Vadisinde
+                            {t('dashboard.in_valley')}
                         </Badge>
                     ) : (
                         <Badge className="bg-green-100 text-green-800 border-green-300">
                             <TrendingUp className="w-4 h-4 mr-1" />
-                            Pozitif Bölge
+                            {t('dashboard.positive_zone')}
                         </Badge>
                     )}
                 </div>
@@ -73,39 +79,39 @@ export function DeathValleyChart({ monthly, paybackPeriod }: DeathValleyChartPro
                     {/* Death Valley Depth */}
                     <div className="p-4 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
                         <p className="text-xs font-medium text-red-600 dark:text-red-400 uppercase mb-1">
-                            En Derin Nokta
+                            {t('dashboard.deep_point')}
                         </p>
                         <p className="text-2xl font-bold text-red-700 dark:text-red-300">
-                            {formatCurrency(deathValleyDepth)}
+                            {format(deathValleyDepth)}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                            {minCumulativeProfitMonth}. ayda
+                            {minCumulativeProfitMonth}. {t('dashboard.month_label')}
                         </p>
                     </div>
 
                     {/* Payback Period */}
                     <div className={`p-4 rounded-lg border ${paybackPeriod ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' : 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800'}`}>
                         <p className={`text-xs font-medium uppercase mb-1 ${paybackPeriod ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`}>
-                            Payback Period
+                            {t('dashboard.payback_period')}
                         </p>
                         <p className={`text-2xl font-bold ${paybackPeriod ? 'text-green-700 dark:text-green-300' : 'text-orange-700 dark:text-orange-300'}`}>
-                            {paybackPeriod ? `${paybackPeriod}. Ay` : 'Henüz Yok'}
+                            {paybackPeriod ? `${paybackPeriod}. ${t('common.month')}` : t('dashboard.no_payback')}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                            {paybackPeriod ? 'Kümülatif kâr pozitife döndü' : 'Dönem içinde pozitife dönmedi'}
+                            {paybackPeriod ? t('dashboard.turned_positive') : t('dashboard.not_turned_yet')}
                         </p>
                     </div>
 
                     {/* Current Status */}
                     <div className={`p-4 rounded-lg border ${isInDeathValley ? 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800' : 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'}`}>
                         <p className={`text-xs font-medium uppercase mb-1 ${isInDeathValley ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}`}>
-                            Mevcut Durum
+                            {t('dashboard.current_status')}
                         </p>
                         <p className={`text-2xl font-bold ${isInDeathValley ? 'text-orange-700 dark:text-orange-300' : 'text-green-700 dark:text-green-300'}`}>
-                            {formatCurrency(Math.abs(cumulativeProfit))}
+                            {format(Math.abs(cumulativeProfit))}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                            {isInDeathValley ? 'Negatif kümülatif kâr' : 'Pozitif kümülatif kâr'}
+                            {isInDeathValley ? t('dashboard.negative_cum') : t('dashboard.positive_cum')}
                         </p>
                     </div>
                 </div>
@@ -143,13 +149,13 @@ export function DeathValleyChart({ monthly, paybackPeriod }: DeathValleyChartPro
                                                 <p className="font-semibold text-sm mb-2">{payload[0].payload.month}</p>
                                                 <div className="space-y-1 text-xs">
                                                     <p className="text-purple-600">
-                                                        <strong>Kümülatif Kâr:</strong> {formatCurrency(payload[0].payload.cumulativeProfit)}
+                                                        <strong>{t('dashboard.cum_profit')}:</strong> {format(payload[0].payload.cumulativeProfit)}
                                                     </p>
                                                     <p className="text-blue-600">
-                                                        <strong>Nakit Bakiye:</strong> {formatCurrency(payload[0].payload.cumulativeCash)}
+                                                        <strong>{t('dashboard.cash_balance')}:</strong> {format(payload[0].payload.cumulativeCash)}
                                                     </p>
                                                     <p className="text-slate-600">
-                                                        <strong>Aylık Kâr:</strong> {formatCurrency(payload[0].payload.monthlyProfit)}
+                                                        <strong>{t('dashboard.monthly_profit')}:</strong> {format(payload[0].payload.monthlyProfit)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -163,11 +169,11 @@ export function DeathValleyChart({ monthly, paybackPeriod }: DeathValleyChartPro
                                 y={0}
                                 stroke="#ef4444"
                                 strokeDasharray="3 3"
-                                label={{ value: "Başabaş Noktası", position: "insideTopRight", fill: "#ef4444" }}
+                                label={{ value: t('dashboard.breakeven_point'), position: "insideTopRight", fill: "#ef4444" }}
                             />
                             {paybackPeriod && (
                                 <ReferenceLine
-                                    x={`${paybackPeriod}. Ay`}
+                                    x={`${paybackPeriod}. ${t('common.month')}`}
                                     stroke="#22c55e"
                                     strokeDasharray="5 5"
                                     label={{ value: "Payback", position: "top", fill: "#22c55e", fontWeight: "bold" }}
@@ -179,7 +185,7 @@ export function DeathValleyChart({ monthly, paybackPeriod }: DeathValleyChartPro
                                 stroke="#8b5cf6"
                                 fillOpacity={1}
                                 fill="url(#colorProfit)"
-                                name="Kümülatif Kâr"
+                                name={t('dashboard.cum_profit')}
                                 strokeWidth={2}
                             />
                             <Area
@@ -188,7 +194,7 @@ export function DeathValleyChart({ monthly, paybackPeriod }: DeathValleyChartPro
                                 stroke="#3b82f6"
                                 fillOpacity={1}
                                 fill="url(#colorCash)"
-                                name="Nakit Bakiye"
+                                name={t('dashboard.cash_balance')}
                                 strokeWidth={2}
                             />
                         </AreaChart>
@@ -199,12 +205,10 @@ export function DeathValleyChart({ monthly, paybackPeriod }: DeathValleyChartPro
                 <div className="p-4 bg-purple-50 dark:bg-purple-950/30 rounded-lg border border-purple-200 dark:border-purple-800">
                     <h4 className="font-semibold text-purple-900 dark:text-purple-100 mb-2 flex items-center gap-2">
                         <AlertTriangle className="w-4 h-4" />
-                        Ölüm Vadisi Nedir?
+                        {t('dashboard.death_what_title')}
                     </h4>
                     <p className="text-sm text-purple-800 dark:text-purple-200">
-                        Startup'lar genellikle ilk aylarda zarar ederler. Kümülatif kârın negatif olduğu bu dönem
-                        "ölüm vadisi" olarak adlandırılır. <strong>Payback period</strong>, kümülatif kârın ilk kez
-                        pozitife döndüğü aydır. Bu grafik, ne kadar sermaye gerektiğini ve ne zaman kârlı olacağınızı gösterir.
+                        {t('dashboard.death_what_desc')}
                     </p>
                 </div>
             </CardContent>

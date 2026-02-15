@@ -12,6 +12,7 @@ export interface FinancialState extends FinancialInput {
 const defaultState: FinancialInput = {
     businessName: '',
     sector: '',
+    businessModel: 'B2B', // Default
     revenueModel: 'subscription',
     pricing: { amount: 0, currency: 'TRY', period: 'monthly' },
     growth: { initialCustomers: 0, monthlyGrowthRate: 0.10 },
