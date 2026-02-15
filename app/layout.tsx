@@ -66,27 +66,29 @@ export default function RootLayout({
     };
 
     // Check initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id, session.user.email);
-      }
-    });
+    if (supabase) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          fetchProfile(session.user.id, session.user.email);
+        }
+      });
 
-    // Listen for changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id, session.user.email);
-      } else {
-        setIsAdmin(false);
-        setSubscriptionTier('free');
-      }
-    });
+      // Listen for changes
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, session) => {
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          fetchProfile(session.user.id, session.user.email);
+        } else {
+          setIsAdmin(false);
+          setSubscriptionTier('free');
+        }
+      });
 
-    return () => subscription.unsubscribe();
+      return () => subscription.unsubscribe();
+    }
   }, [setUser, setIsAdmin, setSubscriptionTier]);
 
   return (
