@@ -5,6 +5,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createExcelFile } from '@/lib/excel-generator';
 import { FinancialInput } from '@/lib/engine/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
     try {
         const { email, data } = await req.json();

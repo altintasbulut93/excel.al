@@ -2,6 +2,8 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { NotificationEngine } from '@/lib/notifications/engine';
 
+export const dynamic = 'force-dynamic';
+
 // This is a simplified protection. In prod, verify 'Authorization: Bearer <CRON_SECRET>'
 const CRON_SECRET = process.env.CRON_SECRET || 'dev-secret';
 

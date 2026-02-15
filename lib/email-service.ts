@@ -7,8 +7,8 @@ import { Resend } from 'resend';
 export async function sendEmail(to: string, subject: string, react: React.ReactElement) {
     const apiKey = process.env.RESEND_API_KEY;
 
-    if (!apiKey) {
-        console.warn("RESEND_API_KEY is not set. Email not sent.");
+    if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '') {
+        console.warn("RESEND_API_KEY is not set or invalid. Email not sent.");
         return { error: "Configuration missing" };
     }
 
