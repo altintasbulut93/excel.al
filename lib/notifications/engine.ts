@@ -8,11 +8,11 @@ import { SmartAlertEmail } from '@/emails/SmartAlertEmail';
 import { render } from '@react-email/render';
 import { FinancialInput } from '@/lib/engine/types';
 
-// Initialize Supabase Admin Client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// Initialize Supabase Admin Client Lazily
+// const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+// const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+// const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export class NotificationEngine {
 
@@ -22,6 +22,16 @@ export class NotificationEngine {
      */
     async processAll() {
         console.log("Starting Notification Engine...");
+
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+        if (!supabaseUrl || !supabaseServiceKey) {
+            console.warn("Supabase credentials missing in NotificationEngine. Skipping.");
+            return { success: false, error: "Missing Credentials" };
+        }
+
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
         // 1. Fetch all users with their latest financial model
         // We use a join or separate queries. For simplicity, let's fetch profiles then models.
