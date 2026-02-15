@@ -1,13 +1,18 @@
 
 import { Resend } from 'resend';
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+// Remove top-level initialization
+// const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export async function sendEmail(to: string, subject: string, react: React.ReactElement) {
-    if (!resend) {
+    const apiKey = process.env.RESEND_API_KEY;
+
+    if (!apiKey) {
         console.warn("RESEND_API_KEY is not set. Email not sent.");
         return { error: "Configuration missing" };
     }
+
+    const resend = new Resend(apiKey);
 
     try {
         const data = await resend.emails.send({
