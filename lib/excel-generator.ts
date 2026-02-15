@@ -1,5 +1,5 @@
 import { FinancialInput } from './engine/types';
-import ExcelJS from 'exceljs';
+import * as ExcelJS from 'exceljs';
 import { generateFinancialModel } from './engine/financials';
 import { getExcelTranslations } from './excel-translations';
 
